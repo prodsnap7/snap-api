@@ -1,11 +1,10 @@
 export class CreateDesignDTO {
+  id?: string;
   name: string;
-  thumbnail: string;
-  canvas: {
-    width: number;
-    height: number;
-    background: string;
-    elements: string;
-    fonts: string[];
-  };
+  userId: string;
+  canvasWidth: number;
+  canvasHeight: number;
+  background: string;
+  elements: string;
+  fonts?: string[];
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, Req } from '@nestjs/common';
 import { Design as DesignModel } from '@prisma/client';
 import { DesignsService } from './designs.service';
 import { CreateDesignDTO } from './designs.dto';
@@ -7,29 +7,39 @@ import { CreateDesignDTO } from './designs.dto';
 export class DesignsController {
   constructor(private readonly designsService: DesignsService) {}
 
-  @Get('designs/:id')
+  @Get(':id')
   async getDesignById(id: string): Promise<DesignModel> {
     return this.designsService.design({ id });
   }
 
-  @Get('designs')
-  async getDesignsByUserId(): Promise<DesignModel[]> {
-    return this.designsService.designs({});
+  @Get()
+  async getDesignsByUserId(@Req() req): Promise<DesignModel[]> {
+    const { user } = req;
+    return this.designsService.designs({ where: { userId: user.id } });
   }
 
-  @Post('designs')
+  @Post()
   async createDesign(
+    @Req() req,
     @Body() createDesignDTO: CreateDesignDTO,
   ): Promise<DesignModel> {
+    const { user } = req;
     const data = {
-      name: createDesignDTO.name,
-      canvasWidth: createDesignDTO.canvas.width,
-      canvasHeight: createDesignDTO.canvas.height,
-      background: createDesignDTO.canvas.background,
-      elements: createDesignDTO.canvas.elements,
-      fonts: createDesignDTO.canvas.fonts,
-      userId: '',
+      ...createDesignDTO,
+      userId: user.id,
     };
     return this.designsService.createDesign(data);
+  }
+
+  @Put(':id')
+  async updateDesign(
+    @Req() req,
+    id: string,
+    @Body() updateDesign: Partial<CreateDesignDTO>,
+  ): Promise<DesignModel> {
+    return this.designsService.updateDesign({
+      where: { id },
+      data: updateDesign,
+    });
   }
 }
