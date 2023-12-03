@@ -8,3 +8,13 @@ export function streamToBuffer(stream: Readable): Promise<Buffer> {
     stream.on('error', reject);
   });
 }
+
+export function shortId(): string {
+  // Generate a number between 0 and 999999
+  const randomNumber: number = Math.floor(Math.random() * 1000000);
+
+  // Convert to a string and pad with zeros if necessary to ensure it's always 6 digits
+  const sixDigitId: string = randomNumber.toString().padStart(6, '0');
+
+  return sixDigitId;
+}

@@ -46,12 +46,13 @@ model Variant {
 }
 
 model Upload {
-  id        Int      @id @default(autoincrement())
-  url       String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  userId    String
-  publicId  String
+  id                Int      @id @default(autoincrement())
+  url               String   @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  userId            String
+  publicId          String
+  backgroundRemoved Boolean  @default(false)
 
   @@map("uploads")
 }

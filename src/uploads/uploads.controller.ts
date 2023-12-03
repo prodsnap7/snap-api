@@ -1,6 +1,5 @@
 import { Body, Controller, Get, Post, Req } from '@nestjs/common';
-import { nanoid } from 'nanoid';
-import path from 'path';
+import { shortId } from 'src/lib/utils';
 import { UploadsService } from './uploads.service';
 import { CloudinaryService } from './cloudinary.service';
 import { ImageTransformService } from './image-transform.service';
@@ -27,12 +26,9 @@ export class UploadsController {
   async uploadPhoto(@Req() req) {
     const data = await req.file();
     const { user } = req;
-    const fileNameWithoutExt: string = path.basename(
-      data.filename,
-      path.extname(data.filename),
-    );
-    const id = nanoid();
-    const userId = user.id;
+    const fileNameWithoutExt = data.filename.split('.')[0];
+    const id = shortId();
+    const userId = user.user_id;
 
     const public_id = `prodsnap-uploads/${userId}/${id}-${fileNameWithoutExt}`;
 
@@ -52,21 +48,21 @@ export class UploadsController {
   }
 
   @Post('remove-bg')
-  async removeBackground(@Req() req, @Body() url: string) {
+  async removeBackground(@Req() req, @Body() data) {
     const { user } = req;
-    const userId = user.id;
-    const existingUpload = await this.uploadsService.findOne({
-      userId,
-      url,
-    });
+    const userId = user.user_id;
+    // const existingUpload = await this.uploadsService.findOne({
+    //   userId,
+    //   url: data.url,
+    // });
 
-    if (existingUpload) {
-      return existingUpload;
-    }
+    // if (existingUpload.backgroundRemoved) {
+    //   return existingUpload;
+    // }
 
     // if the upload doesn't exist, create it
-    const photo = await this.imgTransformService.removeBackground(url);
-    const filename = nanoid();
+    const photo = await this.imgTransformService.removeBackground(data.url);
+    const filename = shortId();
     const public_id = `prodsnap-uploads/${userId}/` + filename;
 
     const upload = await this.cloudinaryService.uploadPhotoFromUrl(
@@ -77,6 +73,7 @@ export class UploadsController {
       url: upload.url,
       userId,
       publicId: upload.public_id,
+      backgroundRemoved: true,
     });
 
     return res;

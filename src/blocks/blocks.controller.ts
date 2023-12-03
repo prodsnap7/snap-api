@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Req,
 } from '@nestjs/common';
 import { BlocksService } from './blocks.service';
 import { CreateBlockDto } from './dto/create-block.dto';
@@ -16,8 +17,20 @@ export class BlocksController {
   constructor(private readonly blocksService: BlocksService) {}
 
   @Post()
-  create(@Body() createBlockDto: CreateBlockDto) {
-    return this.blocksService.create(createBlockDto);
+  create(@Req() req, @Body() createBlockDto: CreateBlockDto) {
+    const { user } = req;
+    const { categoryId, ...rest } = createBlockDto;
+    const data = {
+      ...rest,
+      userId: user.user_id,
+      url: '',
+      category: {
+        connect: {
+          id: categoryId,
+        },
+      },
+    };
+    return this.blocksService.create(data);
   }
 
   @Get('category')

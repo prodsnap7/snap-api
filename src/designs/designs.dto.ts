@@ -1,7 +1,7 @@
 export class CreateDesignDTO {
   id?: string;
   name: string;
-  userId: string;
+  userId?: string;
   canvasWidth: number;
   canvasHeight: number;
   background: string;

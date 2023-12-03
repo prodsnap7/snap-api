@@ -6,6 +6,7 @@ interface CreateUploadDto {
   url: string;
   userId: string;
   publicId: string;
+  backgroundRemoved?: boolean;
 }
 
 @Injectable()
