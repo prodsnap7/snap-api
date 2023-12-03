@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Upload as UploadModel } from '@prisma/client';
+import { Prisma, Upload as UploadModel } from '@prisma/client';
 
 interface CreateUploadDto {
   url: string;
   userId: string;
+  publicId: string;
 }
 
 @Injectable()
@@ -21,9 +22,9 @@ export class UploadsService {
     return this.db.upload.findMany();
   }
 
-  async findOne(id: number): Promise<UploadModel> {
+  async findOne(where: Prisma.UploadWhereUniqueInput): Promise<UploadModel> {
     return this.db.upload.findUnique({
-      where: { id },
+      where,
     });
   }
 

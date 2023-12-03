@@ -20,7 +20,7 @@ export class UploadsController {
 
   @Get(':id')
   async findOne(id: string) {
-    return this.uploadsService.findOne(+id);
+    return this.uploadsService.findOne({ id: Number(id) });
   }
 
   @Post()
@@ -45,6 +45,7 @@ export class UploadsController {
     await this.uploadsService.create({
       url,
       userId,
+      publicId: public_id,
     });
 
     return { url };
@@ -54,6 +55,16 @@ export class UploadsController {
   async removeBackground(@Req() req, @Body() url: string) {
     const { user } = req;
     const userId = user.id;
+    const existingUpload = await this.uploadsService.findOne({
+      userId,
+      url,
+    });
+
+    if (existingUpload) {
+      return existingUpload;
+    }
+
+    // if the upload doesn't exist, create it
     const photo = await this.imgTransformService.removeBackground(url);
     const filename = nanoid();
     const public_id = `prodsnap-uploads/${userId}/` + filename;
@@ -65,6 +76,7 @@ export class UploadsController {
     const res = await this.uploadsService.create({
       url: upload.url,
       userId,
+      publicId: upload.public_id,
     });
 
     return res;
