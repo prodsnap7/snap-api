@@ -23,7 +23,7 @@ export class BlocksService {
 
     return block;
   }
-
+  
   async findAll(): Promise<BlockCategoryModel[]> {
     return this.db.blockCategory.findMany({
       include: {
@@ -37,7 +37,6 @@ export class BlocksService {
       where: { id },
     });
 
-    console.log('Block: ', block);
     if (block && !block.url) {
       await this.blockPhotoQueue.add('create-photo', block.id);
     }

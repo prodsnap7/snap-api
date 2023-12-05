@@ -34,6 +34,7 @@ export class BlocksController {
     return this.blocksService.create(data);
   }
 
+  @Public()
   @Get('category')
   findAllBlockCategories() {
     // returns all block categories with blocks included

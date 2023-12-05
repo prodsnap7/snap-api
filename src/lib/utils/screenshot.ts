@@ -9,13 +9,14 @@ export async function screenshotElement(
 ): Promise<Buffer | void> {
   console.log("Taking screenshot...");
   try {
-  // const browser = await puppeteer.connect({
-  //   browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_IO_API_KEY}`,
-  // });
-  const browser = await puppeteer.launch()
+  const browser = await puppeteer.connect({
+    browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_IO_API_KEY}`,
+  });
+  // const browser = await puppeteer.launch({ headless: "new" })
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: "networkidle2" });
 
+  // const element = await page.waitForSelector(selector);
   const element = await page.$(selector);
   if (!element) {
     throw new Error("Could not find element");
