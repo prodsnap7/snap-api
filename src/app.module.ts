@@ -1,5 +1,5 @@
 import { APP_GUARD } from '@nestjs/core';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Module } from '@nestjs/common';
 import { DesignsModule } from './designs/designs.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -9,18 +9,31 @@ import { BlocksModule } from './blocks/blocks.module';
 import { FontsModule } from './fonts/fonts.module';
 import { IconsModule } from './icons/icons.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { BullModule } from '@nestjs/bull';
+import { BlocksConsumer } from './blocks/blocks.consumer';
 
 @Module({
   imports: [
     DesignsModule,
     PrismaModule,
     BlocksModule,
+    UploadsModule,
     FontsModule,
     IconsModule,
     ConfigModule.forRoot({ isGlobal: true }),
-    UploadsModule,
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        redis: {
+          host: configService.get('REDIS_HOST'),
+          port: +configService.get('REDIS_PORT'),
+        },
+      }),
+      inject: [ConfigService],
+    }),
   ],
   providers: [
+    BlocksConsumer,
     FirebaseAuthStrategy,
     {
       provide: APP_GUARD,

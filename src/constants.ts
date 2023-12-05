@@ -1,0 +1,1 @@
+export const BLOCK_PHOTO_QUEUE = 'BLOCK_PHOTO_QUEUE';

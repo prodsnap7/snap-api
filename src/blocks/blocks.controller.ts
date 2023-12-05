@@ -11,6 +11,7 @@ import {
 import { BlocksService } from './blocks.service';
 import { CreateBlockDto } from './dto/create-block.dto';
 import { UpdateBlockDto } from './dto/update-block.dto';
+import { Public } from 'src/lib/public-modifier';
 
 @Controller('blocks')
 export class BlocksController {
@@ -39,6 +40,7 @@ export class BlocksController {
     return this.blocksService.findAll();
   }
 
+  @Public() 
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.blocksService.findOne(id);

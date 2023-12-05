@@ -9,5 +9,6 @@ import { PrismaModule } from 'src/prisma/prisma.module';
   controllers: [UploadsController],
   providers: [UploadsService, ImageTransformService, CloudinaryService],
   imports: [PrismaModule],
+  exports: [CloudinaryService]
 })
 export class UploadsModule {}
