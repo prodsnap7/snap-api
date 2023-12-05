@@ -1,8 +1,15 @@
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { Strategy, ExtractJwt } from 'passport-firebase-jwt';
-import * as firebaseConfig from './firebase.config.json';
+// import * as firebaseConfig from './firebase.config.json';
 import * as firebase from 'firebase-admin';
+
+import * as dotenv from 'dotenv';
+
+dotenv.config();
+
+// check if the environment is production or development
+const firebaseConfig = process.env.NODE_ENV === 'production' ? require('/etc/secrets/firebase.config.json') : require('./firebase.config.json'); 
 
 const firebase_params = {
   type: firebaseConfig.type,
