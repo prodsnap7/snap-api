@@ -41,7 +41,7 @@ export class BlocksController {
     return this.blocksService.findAll();
   }
 
-  @Public() 
+  @Public()
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.blocksService.findOne(id);
@@ -50,6 +50,11 @@ export class BlocksController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateBlockDto: UpdateBlockDto) {
     return this.blocksService.update(id, updateBlockDto);
+  }
+
+  @Get(':id/update-photo')
+  updatePhoto(@Param('id') id: string) {
+    return this.blocksService.updatePhoto(id);
   }
 
   @Delete(':id')

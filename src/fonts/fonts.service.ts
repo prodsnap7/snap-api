@@ -15,9 +15,11 @@ type FontResponse = {
 export class FontsService {
   constructor(private readonly db: PrismaService) {}
 
-  async getAllFonts(
-    page: number,
-): Promise<{ fonts: FontResponse[]; nextPage: number | null; hasNextPage: boolean }> {
+  async getAllFonts(page: number): Promise<{
+    fonts: FontResponse[];
+    nextPage: number | null;
+    hasNextPage: boolean;
+  }> {
     const pageSize = 30;
     const skipAmount = (page - 1) * pageSize;
 
@@ -44,6 +46,10 @@ export class FontsService {
       variants: font.variants.map((variant) => ({
         name: variant.name,
         imageUrl: variant.imageUrl,
+        weight: +variant.weight,
+        style: variant.style,
+        family: font.family.name,
+        url: variant.fontUrl,
       })),
     }));
 
@@ -55,6 +61,5 @@ export class FontsService {
       nextPage: hasNextPage ? page + 1 : null, // Return null if no next page
       hasNextPage, // Include hasNextPage in the response
     };
-}
-
+  }
 }

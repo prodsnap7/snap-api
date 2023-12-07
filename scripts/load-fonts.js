@@ -12,7 +12,7 @@ config();
 
 async function fetchFonts() {
     const res = await axios.get('https://www.googleapis.com/webfonts/v1/webfonts?key=' + process.env.GOOGLE_API_KEY);
-    return res.data.items;
+    return res.data.items.slice(10, 200);
 }
 
 async function upsertDatabaseEntities(prisma, font) {
@@ -37,18 +37,54 @@ async function upsertDatabaseEntities(prisma, font) {
     return { family, category, kind };
 }
 
+
 async function processFontVariants(cloudinary, font) {
-    let fontVariants = [];
-    for (let variant of font.variants) {
-        const imgBuffer = await generateFontImage(font.family, variant, font.files[variant]);
-        const res = await cloudinary.uploadPhotoFromStream(imgBuffer, `prodsnap-fonts/${font.family}-${variant}`);
-        fontVariants.push({
-            name: variant,
-            imageUrl: res.url
-        });
-    }
-    return fontVariants;
+  let fontVariants = [];
+
+  for (let variant of font.variants) {
+      const { style, weight } = parseVariantStyleAndWeight(variant);
+      const fontUrl = constructVariantGoogleFontsUrl(font.family, style, weight);
+
+      const imgBuffer = await generateFontImage(font.family, variant, font.files[variant]);
+      const res = await cloudinary.uploadPhotoFromStream(imgBuffer, `prodsnap-fonts/${font.family}-${variant}`);
+
+      fontVariants.push({
+          name: variant,
+          imageUrl: res.url,
+          style: style,
+          weight: weight,
+          fontUrl: fontUrl
+      });
+  }
+
+  return fontVariants;
 }
+
+function constructVariantGoogleFontsUrl(family, style, weight) {
+  let urlPart = style === 'italic' ? `ital,wght@1,${weight}` : `wght@${weight}`;
+  return `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:${urlPart}`;
+}
+
+function parseVariantStyleAndWeight(variant) {
+  let style = 'normal';
+  let weight = '400';
+
+  if (variant === 'italic') {
+      style = 'italic';
+  } else if (variant.match(/^\d+$/)) {
+      weight = variant;
+  } else if (variant !== 'regular') {
+      const match = variant.match(/(\d+)(italic)/);
+      if (match) {
+          weight = match[1];
+          style = 'italic';
+      }
+  }
+
+  return { style, weight };
+}
+
+
 
 async function insertFont(prisma, fontData) {
     await prisma.font.create({ data: fontData });

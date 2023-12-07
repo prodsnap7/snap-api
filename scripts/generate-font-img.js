@@ -1,11 +1,10 @@
 const fs = require('fs');
 const axios = require('axios');
 const { fabric } = require('fabric');
-const { createCanvas, registerFont } = require('canvas');
 
 async function generateFontImage(fontFamily, variant, fontUrl) {
     // Download and register the font
-    const fontPath = __dirname + `/tmp/${fontFamily}-${variant}.ttf`;
+    const fontPath = `/tmp/${fontFamily}-${variant}.ttf`;
     const writer = fs.createWriteStream(fontPath);
     const response = await axios({
         url: fontUrl,
@@ -20,50 +19,57 @@ async function generateFontImage(fontFamily, variant, fontUrl) {
 
     console.log(`Downloaded font for ${fontFamily} variant ${variant}`);
 
-    console.log("registering font at ", fontPath)
+    // Register font
     fabric.nodeCanvas.registerFont(fontPath, { family: fontFamily, weight: variant });
-    // registerFont(fontPath, { family: fontFamily, weight: variant });
 
-    // const nodeCanvas = createCanvas(200, 200);
-
-    // const canvas = new
+    // Ensure font is fully loaded
+    await new Promise(resolve => setTimeout(resolve, 500)); // Wait for 500ms
 
     const fontSize = 40; // Adjust font size if necessary
     const text = variant === 'regular' ? fontFamily : `${fontFamily} ${variant}`;
 
+    // Create a temporary text
+    // object to measure size
+    const tempText = new fabric.Text(text, {
+    fontFamily: fontFamily,
+    fontWeight: variant === 'regular' ? 'normal' : variant,
+    fontSize: fontSize
+    });
+
+    // Calculate the bounding box of the text
+    tempText.setCoords();
+    const boundingRect = tempText.getBoundingRect();
+
+    // Add buffer to the dimensions to prevent clipping
+    const buffer = 20; // Adjust this buffer size if necessary
+    const canvasWidth = boundingRect.width + buffer;
+    const canvasHeight = boundingRect.height + buffer;
+
+    // Create a Fabric.js canvas with adjusted dimensions
+    const canvas = new fabric.StaticCanvas(null, { width: canvasWidth, height: canvasHeight });
+
+    // Add the text object to the canvas
     const textObject = new fabric.Text(text, {
-        left: 10,
-        top: 10,
+        left: buffer / 2,
+        top: buffer / 2,
         fontFamily: fontFamily,
         fontWeight: variant === 'regular' ? 'normal' : variant,
         fontSize: fontSize,
         fill: 'black'
     });
-    // Calculate the bounding box of the text
-    textObject.setCoords();
-    const boundingRect = textObject.getBoundingRect();
-
-    // Create a Fabric.js canvas
-    const canvas = new fabric.StaticCanvas(null, { width: boundingRect.width, height: boundingRect.height });
-
     canvas.add(textObject);
+
+    // Center the text object within the canvas
     textObject.center();
     canvas.renderAll();
 
+    // Generate the PNG stream from the canvas
+    const pngStream = canvas.createPNGStream();
 
-    return canvas.createPNGStream();
-    // Export canvas as SVG
-    // const svg = canvas.toSVG();
-
-    // console.log(`Generated SVG image for ${fontFamily} variant ${variant}`);
-
-    // // Convert SVG string to Buffer
-    // const svgBuffer = Buffer.from(svg, 'utf-8');
     // Optionally, remove the font file after using it
     fs.unlinkSync(fontPath);
 
-    return svgBuffer;
+    return pngStream;
 }
 
 module.exports = generateFontImage;
-

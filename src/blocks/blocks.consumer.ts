@@ -8,7 +8,10 @@ import { CloudinaryService } from 'src/uploads/cloudinary.service';
 @Injectable()
 @Processor(BLOCK_PHOTO_QUEUE)
 export class BlocksConsumer {
-  constructor(private readonly db: PrismaService, private readonly cloudinaryService: CloudinaryService) {}
+  constructor(
+    private readonly db: PrismaService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
   @Process('create-photo')
   async createBlockPhoto(job: any) {
     console.log('Creating block photo...');
@@ -23,7 +26,10 @@ export class BlocksConsumer {
     // then update the block with the photo URL
     if (photo) {
       console.log('Photo taken!');
-      const upload = await this.cloudinaryService.uploadPhotoBuffer(photo, `prodsnap-blocks/${blockId}`);
+      const upload = await this.cloudinaryService.uploadPhotoBuffer(
+        photo,
+        `prodsnap-blocks/${blockId}`,
+      );
       await this.db.block.update({
         where: { id: blockId },
         data: {
