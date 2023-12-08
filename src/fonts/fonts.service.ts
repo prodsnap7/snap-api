@@ -15,9 +15,18 @@ type FontResponse = {
 export class FontsService {
   constructor(private readonly db: PrismaService) {}
 
-  async getAllFonts(
-    page: number,
-  ): Promise<{ fonts: FontResponse[]; nextPage: number }> {
+  async getAllFonts(page: number): Promise<{
+    fonts: FontResponse[];
+    nextPage: number | null;
+    hasNextPage: boolean;
+  }> {
+    const pageSize = 30;
+    const skipAmount = (page - 1) * pageSize;
+
+    // Fetch the total count of fonts from the database
+    const totalFontsCount = await this.db.font.count();
+
+    // Fetch the fonts with pagination
     const fonts = await this.db.font.findMany({
       include: {
         family: true, // Include details from the Family model
@@ -25,8 +34,8 @@ export class FontsService {
         kind: true, // Include details from the Kind model
         variants: true, // Include details from the Variant model
       },
-      skip: (page - 1) * 30,
-      take: 30,
+      skip: skipAmount,
+      take: pageSize,
     });
 
     // Format the results to match the desired object structure
@@ -37,12 +46,20 @@ export class FontsService {
       variants: font.variants.map((variant) => ({
         name: variant.name,
         imageUrl: variant.imageUrl,
+        weight: +variant.weight,
+        style: variant.style,
+        family: font.family.name,
+        url: variant.fontUrl,
       })),
     }));
 
+    // Determine if there is a next page
+    const hasNextPage = skipAmount + pageSize < totalFontsCount;
+
     return {
       fonts: formattedFonts,
-      nextPage: +page + 1,
+      nextPage: hasNextPage ? page + 1 : null, // Return null if no next page
+      hasNextPage, // Include hasNextPage in the response
     };
   }
 }

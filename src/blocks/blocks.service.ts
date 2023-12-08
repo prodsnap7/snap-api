@@ -37,11 +37,6 @@ export class BlocksService {
       where: { id },
     });
 
-    console.log('Block: ', block);
-    if (block && !block.url) {
-      await this.blockPhotoQueue.add('create-photo', block.id);
-    }
-
     return block;
   }
 
@@ -53,6 +48,11 @@ export class BlocksService {
       where: { id },
       data: updateBlockDto,
     });
+  }
+
+  async updatePhoto(blockId: string) {
+    await this.blockPhotoQueue.add('create-photo', blockId);
+    return { message: 'Photo update queued' };
   }
 
   async remove(id: string): Promise<BlockModel> {

@@ -41,6 +41,9 @@ model Variant {
   id       Int    @id @default(autoincrement())
   name     String
   imageUrl String
+  style    String
+  weight   String
+  fontUrl  String
   fontId   Int
   font     Font   @relation(fields: [fontId], references: [id])
 }
