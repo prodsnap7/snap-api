@@ -52,6 +52,7 @@ export class BlocksService {
 
   async updatePhoto(blockId: string) {
     await this.blockPhotoQueue.add('create-photo', blockId);
+    return { message: 'Photo update queued' };
   }
 
   async remove(id: string): Promise<BlockModel> {

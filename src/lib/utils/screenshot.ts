@@ -9,12 +9,9 @@ export async function screenshotElement(
 ): Promise<Buffer | void> {
   console.log('Taking screenshot...');
   try {
-    // const browser = await puppeteer.connect({
-    //   browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_IO_API_KEY}`,
-    // });
     const browser = await puppeteer.launch({ headless: 'new' });
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: 'networkidle2' });
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
 
     // wait for 1 second
     await new Promise((r) => setTimeout(r, 1000));
