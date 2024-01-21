@@ -35,11 +35,15 @@ export class DesignsController {
   async updateDesign(
     @Req() req,
     @Param('id') id: string,
+    @Param('generateThumbnail') generateThumbnail = false,
     @Body() updateDesign: Partial<CreateDesignDTO>,
   ): Promise<DesignModel> {
-    return this.designsService.updateDesign({
-      where: { id },
-      data: updateDesign,
-    });
+    return this.designsService.updateDesign(
+      {
+        where: { id },
+        data: updateDesign,
+      },
+      generateThumbnail,
+    );
   }
 }
