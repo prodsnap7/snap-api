@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Post, Put, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+  Req,
+} from '@nestjs/common';
 import { Design as DesignModel } from '@prisma/client';
 import { DesignsService } from './designs.service';
 import { CreateDesignDTO } from './designs.dto';
@@ -35,7 +44,7 @@ export class DesignsController {
   async updateDesign(
     @Req() req,
     @Param('id') id: string,
-    @Param('generateThumbnail') generateThumbnail = false,
+    @Query('generateThumbnail') generateThumbnail: boolean = false,
     @Body() updateDesign: Partial<CreateDesignDTO>,
   ): Promise<DesignModel> {
     return this.designsService.updateDesign(

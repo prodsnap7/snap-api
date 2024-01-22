@@ -15,13 +15,13 @@ export class DesignsConsumer {
     private readonly configService: ConfigService,
   ) {}
 
-  @Process('create-photo')
+  @Process('create-thumbnail')
   async createDesignPhoto(job: any) {
     console.log('Creating design photo...');
     const designId = job.data;
 
-    const url = this.configService.get('BASE_APP_URL') + `/designs/${designId}`;
-    const selector = '#canvas';
+    const url = this.configService.get('BASE_APP_URL') + `/preview/${designId}`;
+    const selector = '.renderer';
 
     const photo = await screenshotElement(url, selector);
 

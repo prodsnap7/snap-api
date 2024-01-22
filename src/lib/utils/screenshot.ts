@@ -11,7 +11,7 @@ export async function screenshotElement(
   try {
     const browser = await puppeteer.launch({ headless: 'new' });
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.goto(url, { waitUntil: 'networkidle0' });
 
     // wait for 1 second
     await new Promise((r) => setTimeout(r, 1000));

@@ -51,13 +51,17 @@ export class DesignsService {
     generateThumbnail: boolean,
   ): Promise<Design> {
     const { where, data } = params;
-    if (generateThumbnail) {
-      await this.designPhotoQueue.add('create-photo', where.id);
-    }
-    return this.db.design.update({
+    const res = this.db.design.update({
       data,
       where,
     });
+
+    if (generateThumbnail) {
+      console.log('Generating thumbnail...');
+      await this.designPhotoQueue.add('create-thumbnail', where.id);
+    }
+
+    return res;
   }
 
   async deleteDesign(where: Prisma.DesignWhereUniqueInput): Promise<Design> {
