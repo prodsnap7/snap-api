@@ -3,7 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Module } from '@nestjs/common';
 import { DesignsModule } from './designs/designs.module';
 import { PrismaModule } from './prisma/prisma.module';
-import { FirebaseAuthGuard } from './firebase/firebase-auth.guard';
+// import { FirebaseAuthGuard } from './firebase/firebase-auth.guard';
 import { FirebaseAuthStrategy } from './firebase/firebase-auth.strategy';
 import { BlocksModule } from './blocks/blocks.module';
 import { FontsModule } from './fonts/fonts.module';
@@ -12,6 +12,10 @@ import { UploadsModule } from './uploads/uploads.module';
 import { BullModule } from '@nestjs/bull';
 import { BlocksConsumer } from './blocks/blocks.consumer';
 import { DesignsConsumer } from './designs/designs.consumer';
+import { ApiKeyGuard } from './lib/api.guard';
+
+// API keys - 10 numbers and letters
+const API_KEYS = ['3f8b4K9qN6uL2aXz'];
 
 @Module({
   imports: [
@@ -39,7 +43,7 @@ import { DesignsConsumer } from './designs/designs.consumer';
     FirebaseAuthStrategy,
     {
       provide: APP_GUARD,
-      useClass: FirebaseAuthGuard,
+      useValue: new ApiKeyGuard(API_KEYS),
     },
   ],
 })
