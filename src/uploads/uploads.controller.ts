@@ -48,34 +48,10 @@ export class UploadsController {
   }
 
   @Post('remove-bg')
-  async removeBackground(@Req() req, @Body() data) {
-    const { user } = req;
-    const userId = user.user_id;
-    // const existingUpload = await this.uploadsService.findOne({
-    //   userId,
-    //   url: data.url,
-    // });
-
-    // if (existingUpload.backgroundRemoved) {
-    //   return existingUpload;
-    // }
-
+  async removeBackground(@Body() data) {
     // if the upload doesn't exist, create it
     const photo = await this.imgTransformService.removeBackground(data.url);
-    const filename = shortId();
-    const public_id = `prodsnap-uploads/${userId}/` + filename;
 
-    const upload = await this.cloudinaryService.uploadPhotoFromUrl(
-      photo,
-      public_id,
-    );
-    const res = await this.uploadsService.create({
-      url: upload.url,
-      userId,
-      publicId: upload.public_id,
-      backgroundRemoved: true,
-    });
-
-    return res;
+    return photo;
   }
 }
