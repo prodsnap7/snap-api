@@ -7,15 +7,19 @@ export async function screenshotElement(
   url: string,
   selector: string,
 ): Promise<Buffer | void> {
-  console.log('Taking screenshot...');
+  console.log('Taking screenshot...', url, selector);
   try {
-    const browser = await puppeteer.launch({ headless: 'new' });
+    // const browser = await puppeteer.connect({
+    //   browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_IO_API_KEY}&--window-size=2400,2000`,
+    // });
+    const browser = await puppeteer.launch({
+      headless: false,
+    });
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.goto(url, { waitUntil: 'networkidle0' });
 
     // wait for 1 second
-    await new Promise((r) => setTimeout(r, 1000));
-    const element = await page.$(selector);
+    const element = await page.waitForSelector(selector, { timeout: 10000 });
     if (!element) {
       throw new Error('Could not find element');
     }

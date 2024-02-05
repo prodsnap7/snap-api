@@ -24,7 +24,10 @@ export class CloudinaryService {
     return new Promise((resolve, reject) => {
       cloudinary.uploader
         .upload_stream(
-          { resource_type: 'image', public_id },
+          {
+            resource_type: 'image',
+            public_id,
+          },
           (error, result) => {
             if (error) {
               reject(error);

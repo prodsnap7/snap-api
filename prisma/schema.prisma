@@ -69,6 +69,7 @@ model Design {
   background   String
   elements     String
   fonts        String[]
+  thumbnail    String   @default("")
 
   @@map("designs")
 }

@@ -11,6 +11,7 @@ import { IconsModule } from './icons/icons.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { BullModule } from '@nestjs/bull';
 import { BlocksConsumer } from './blocks/blocks.consumer';
+import { DesignsConsumer } from './designs/designs.consumer';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { BlocksConsumer } from './blocks/blocks.consumer';
   ],
   providers: [
     BlocksConsumer,
+    DesignsConsumer,
     FirebaseAuthStrategy,
     {
       provide: APP_GUARD,
