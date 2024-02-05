@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+  output = "./generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Family {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  fonts Font[]
+}
+
+model Category {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  fonts Font[]
+}
+
+model Kind {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  fonts Font[]
+}
+
+model Font {
+  id         Int       @id @default(autoincrement())
+  familyId   Int
+  family     Family    @relation(fields: [familyId], references: [id])
+  categoryId Int
+  category   Category  @relation(fields: [categoryId], references: [id])
+  kindId     Int
+  kind       Kind      @relation(fields: [kindId], references: [id])
+  subsets    String[]
+  variants   Variant[]
+}
+
+model Variant {
+  id       Int    @id @default(autoincrement())
+  name     String
+  imageUrl String
+  style    String
+  weight   String
+  fontUrl  String
+  fontId   Int
+  font     Font   @relation(fields: [fontId], references: [id])
+}
+
+model Upload {
+  id                Int      @id @default(autoincrement())
+  url               String   @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  userId            String
+  publicId          String
+  backgroundRemoved Boolean  @default(false)
+
+  @@map("uploads")
+}
+
+model Design {
+  id           String   @id @default(uuid())
+  name         String
+  userId       String
+  canvasWidth  Int
+  canvasHeight Int
+  background   String
+  elements     String
+  fonts        String[]
+  thumbnail    String   @default("")
+
+  @@map("designs")
+}
+
+model BlockCategory {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  name      String
+  blocks    Block[]
+
+  @@map("block_categories")
+}
+
+model Block {
+  id         String        @id @default(uuid())
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  userId     String
+  elements   String
+  url        String
+  categoryId Int
+  category   BlockCategory @relation(fields: [categoryId], references: [id])
+
+  @@map("blocks")
+}
