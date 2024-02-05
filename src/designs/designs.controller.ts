@@ -7,15 +7,19 @@ import {
   Put,
   Query,
   Req,
+  Res,
 } from '@nestjs/common';
+import { FastifyReply } from 'fastify';
 import { Design as DesignModel } from '@prisma/client';
 import { DesignsService } from './designs.service';
 import { CreateDesignDTO } from './designs.dto';
+import { Public } from 'src/lib/public-modifier';
 
 @Controller('designs')
 export class DesignsController {
   constructor(private readonly designsService: DesignsService) {}
 
+  @Public()
   @Get(':id')
   async getDesignById(@Param('id') id: string): Promise<DesignModel> {
     return this.designsService.design({ id });
@@ -42,7 +46,6 @@ export class DesignsController {
 
   @Put(':id')
   async updateDesign(
-    @Req() req,
     @Param('id') id: string,
     @Query('generateThumbnail') generateThumbnail: boolean = false,
     @Body() updateDesign: Partial<CreateDesignDTO>,
@@ -54,5 +57,20 @@ export class DesignsController {
       },
       generateThumbnail,
     );
+  }
+
+  @Get(':id/download')
+  async downloadDesign(@Param('id') id: string, @Res() res: FastifyReply) {
+    const imageBuffer = await this.designsService.downloadDesign(id);
+
+    if (!imageBuffer) {
+      res.status(404);
+      res.send({ message: 'Unable to download design' });
+      return;
+    }
+    res.header('Content-Type', 'image/jpeg');
+
+    // Send the buffer as the response
+    res.send(imageBuffer);
   }
 }

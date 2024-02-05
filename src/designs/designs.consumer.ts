@@ -2,7 +2,7 @@ import { Process, Processor } from '@nestjs/bull';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DESIGN_PHOTO_QUEUE } from 'src/constants';
-import { screenshotElement } from 'src/lib/utils/screenshot';
+import { screenshotElement } from 'src/lib/utils/screenshot2';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CloudinaryService } from 'src/uploads/cloudinary.service';
 
@@ -21,7 +21,7 @@ export class DesignsConsumer {
     const designId = job.data;
 
     const url = this.configService.get('BASE_APP_URL') + `/preview/${designId}`;
-    const selector = '.renderer';
+    const selector = '#preview-canvas';
 
     const photo = await screenshotElement(url, selector);
 
@@ -31,12 +31,14 @@ export class DesignsConsumer {
       console.log('Photo taken!');
       const upload = await this.cloudinaryService.uploadPhotoBuffer(
         photo,
-        `prodsnap-designs/${designId}-${Date.now()}}`,
+        `prodsnap-designs/${designId}-${Date.now()}`,
       );
+      const uploadUrl = `http://res.cloudinary.com/nexttrack1791/image/upload/w_500/v${upload.version}/${upload.public_id}.${upload.format}`;
+      console.log('Upload', uploadUrl);
       await this.db.design.update({
         where: { id: designId },
         data: {
-          thumbnail: upload.url,
+          thumbnail: uploadUrl,
         },
       });
     } else {
