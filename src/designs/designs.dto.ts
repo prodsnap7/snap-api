@@ -7,4 +7,5 @@ export class CreateDesignDTO {
   background: string;
   elements: string;
   fonts?: string[];
+  thumbnail?: string;
 }

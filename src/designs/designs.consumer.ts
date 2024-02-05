@@ -34,7 +34,6 @@ export class DesignsConsumer {
         `prodsnap-designs/${designId}-${Date.now()}`,
       );
       const uploadUrl = `http://res.cloudinary.com/nexttrack1791/image/upload/w_500/v${upload.version}/${upload.public_id}.${upload.format}`;
-      console.log('Upload', uploadUrl);
       await this.db.design.update({
         where: { id: designId },
         data: {
