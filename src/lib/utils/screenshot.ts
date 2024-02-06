@@ -11,9 +11,10 @@ export async function screenshotElement(
   try {
     // const browser = await puppeteer.connect({
     //   browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_IO_API_KEY}&--window-size=2400,2000`,
+    //   defaultViewport: null,
     // });
     const browser = await puppeteer.launch({
-      headless: false,
+      headless: 'new',
       defaultViewport: null,
     });
     const page = await browser.newPage();
