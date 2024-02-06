@@ -18,7 +18,8 @@ export async function screenshotElement(
     // });
     const browser = await chromium.connect(
       'wss://chrome.browserless.io/playwright?token=' +
-        process.env.BROWSERLESS_IO_API_KEY,
+        process.env.BROWSERLESS_IO_API_KEY +
+        '&--window-size=2400,2000',
     );
     const context = await browser.newContext({
       viewport: { width: 2400, height: 2000 },
