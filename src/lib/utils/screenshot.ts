@@ -14,8 +14,10 @@ export async function screenshotElement(
     // });
     const browser = await puppeteer.launch({
       headless: false,
+      defaultViewport: null,
     });
     const page = await browser.newPage();
+    page.setViewport({ width: 2400, height: 2000 });
     await page.goto(url, { waitUntil: 'networkidle0' });
 
     // wait for 1 second

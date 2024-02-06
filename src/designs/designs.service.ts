@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma, Design } from '@prisma/client';
 import { Queue } from 'bull';
 import { DESIGN_PHOTO_QUEUE } from 'src/constants';
-import { screenshotElement } from 'src/lib/utils/screenshot2';
+import { screenshotElement } from 'src/lib/utils/screenshot';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
