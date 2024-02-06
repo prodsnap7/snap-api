@@ -10,12 +10,13 @@ export async function screenshotElement(
   console.log('Taking screenshot...', url, selector);
   try {
     // const browser = await puppeteer.connect({
-    //   browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_IO_API_KEY}&--window-size=2400,2000`,
+    //   browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_IO_API_KEY}&--disable-features=site-per-process`,
     //   defaultViewport: null,
     // });
     const browser = await puppeteer.launch({
       headless: 'new',
       defaultViewport: null,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
     const page = await browser.newPage();
     page.setViewport({ width: 2400, height: 2000 });
