@@ -13,9 +13,13 @@ export async function screenshotElement(
     // const browser = await chromium.connectOverCDP(`wss://chrome.browserless.io?token=${process.env.BROWSERLESS_IO_API_KEY}`);
 
     // For local execution
-    const browser = await chromium.launch({
-      headless: true, // set to true for headless mode
-    });
+    // const browser = await chromium.launch({
+    //   headless: true, // set to true for headless mode
+    // });
+    const browser = await chromium.connect(
+      'wss://chrome.browserless.io/playwright?token=' +
+        process.env.BROWSERLESS_IO_API_KEY,
+    );
     const context = await browser.newContext({
       viewport: { width: 2400, height: 2000 },
     }); // Set custom viewport size if needed
