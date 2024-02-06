@@ -12,6 +12,7 @@ import { UploadsModule } from './uploads/uploads.module';
 import { BullModule } from '@nestjs/bull';
 import { BlocksConsumer } from './blocks/blocks.consumer';
 import { DesignsConsumer } from './designs/designs.consumer';
+import { PhotosModule } from './photos/photos.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { DesignsConsumer } from './designs/designs.consumer';
       }),
       inject: [ConfigService],
     }),
+    PhotosModule,
   ],
   providers: [
     BlocksConsumer,
