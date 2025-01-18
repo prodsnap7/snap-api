@@ -70,6 +70,9 @@ model Design {
   elements     String
   fonts        String[]
   thumbnail    String   @default("")
+  groups       String
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
 
   @@map("designs")
 }

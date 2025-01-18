@@ -5,7 +5,8 @@ export class CreateDesignDTO {
   canvasWidth: number;
   canvasHeight: number;
   background: string;
-  elements: string;
+  elements: any;
+  groups: any;
   fonts?: string[];
   thumbnail?: string;
 }

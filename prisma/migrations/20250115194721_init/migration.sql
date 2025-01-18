@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "designs" ALTER COLUMN "groups" SET NOT NULL,
+ALTER COLUMN "groups" SET DATA TYPE TEXT;
