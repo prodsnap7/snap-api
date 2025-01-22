@@ -26,14 +26,26 @@ export class IconsService {
           '',
           '',
           (e, data) => {
-            if (e) reject(e);
-            resolve(JSON.parse(data as string));
+            if (e) return reject(e);
+            if (!data) return reject(new Error('No data received from API'));
+            try {
+              resolve(JSON.parse(data as string));
+            } catch (parseError) {
+              reject(
+                new Error(
+                  `Failed to parse API response: ${parseError.message}`,
+                ),
+              );
+            }
           },
         );
       });
       return data;
     } catch (e) {
-      throw new HttpException(e.message, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        `Failed to fetch icons: ${e.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }
