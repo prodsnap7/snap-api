@@ -2,7 +2,7 @@ import { Process, Processor } from '@nestjs/bull';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DESIGN_PHOTO_QUEUE } from 'src/constants';
-import { screenshotElement } from 'src/lib/utils/screenshot';
+import { screenshotElement } from 'src/lib/utils/scrapingbee-screenshot';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CloudinaryService } from 'src/uploads/cloudinary.service';
 
