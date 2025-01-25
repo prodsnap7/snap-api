@@ -9,10 +9,22 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 // check if the environment is production or development
-const firebaseConfig =
-  process.env.NODE_ENV === 'production'
-    ? require('/etc/secrets/firebase.config.json')
-    : require('./firebase.config.json');
+let firebaseConfig;
+try {
+  firebaseConfig =
+    process.env.NODE_ENV === 'production'
+      ? require('/etc/secrets/firebase.config.json')
+      : require(process.cwd() + '/src/firebase/firebase.config.json');
+} catch (error) {
+  console.error(
+    'Firebase config file not found. Please ensure firebase.config.json exists in the correct location.',
+  );
+  console.error(
+    'For development: Place it in the same directory as firebase-auth.strategy.ts',
+  );
+  console.error('For production: Place it in /etc/secrets/');
+  throw error;
+}
 
 const firebase_params = {
   type: firebaseConfig.type,
