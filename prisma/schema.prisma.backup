@@ -28,28 +28,42 @@ model Kind {
 model Font {
   id         Int       @id @default(autoincrement())
   familyId   Int
-  categoryId Int
-  kindId     Int
-  subsets    String[]
-  category   Category  @relation(fields: [categoryId], references: [id])
   family     Family    @relation(fields: [familyId], references: [id])
+  categoryId Int
+  category   Category  @relation(fields: [categoryId], references: [id])
+  kindId     Int
   kind       Kind      @relation(fields: [kindId], references: [id])
+  subsets    String[]
   variants   Variant[]
 
-  @@unique([familyId, categoryId, kindId], map: "Font_familyId_categoryId_kindId_unique")
+  @@unique([familyId, categoryId, kindId])
 }
 
 model Variant {
-  id       Int     @id @default(autoincrement())
+  id       Int    @id @default(autoincrement())
   name     String
   imageUrl String?
-  fontId   Int
   style    String
   weight   String
   fontUrl  String
-  font     Font    @relation(fields: [fontId], references: [id])
+  fontId   Int
+  font     Font   @relation(fields: [fontId], references: [id])
 
-  @@unique([fontId, style, weight], map: "Variant_fontId_style_weight_unique")
+  @@unique([fontId, style, weight])
+}
+
+model Upload {
+  id               Int      @id @default(autoincrement())
+  url              String
+  userId           String
+  publicId         String
+  backgroundRemoved Boolean  @default(false)
+  type             String   @default("upload")
+  designId         String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId, type, designId])
 }
 
 model Design {
@@ -63,8 +77,8 @@ model Design {
   fonts        String[]
   thumbnail    String   @default("")
   groups       String
-  createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
 
   @@map("designs")
 }
@@ -90,14 +104,4 @@ model Block {
   category   BlockCategory @relation(fields: [categoryId], references: [id])
 
   @@map("blocks")
-}
-
-model uploads {
-  id                Int      @id @default(autoincrement())
-  url               String   @unique
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime
-  userId            String
-  publicId          String
-  backgroundRemoved Boolean  @default(false)
 }

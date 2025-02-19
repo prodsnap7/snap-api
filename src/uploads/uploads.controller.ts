@@ -1,5 +1,12 @@
-import { Body, Controller, Get, Post, Req } from '@nestjs/common';
-import { shortId } from 'src/lib/utils';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  BadRequestException,
+} from '@nestjs/common';
+import { shortId, ensureHttps } from 'src/lib/utils';
 import { UploadsService } from './uploads.service';
 import { CloudinaryService } from './cloudinary.service';
 import { ImageTransformService } from './image-transform.service';
@@ -13,8 +20,13 @@ export class UploadsController {
   ) {}
 
   @Get()
-  async findAll() {
-    return this.uploadsService.findAll();
+  async findAll(@Req() req) {
+    const { user } = req;
+    return this.uploadsService.findAll({
+      where: {
+        userId: user.user_id,
+      },
+    });
   }
 
   @Get(':id')
@@ -77,5 +89,57 @@ export class UploadsController {
     });
 
     return res;
+  }
+
+  @Post('screenshot')
+  async uploadScreenshot(@Req() req) {
+    const data = await req.file();
+    const { user } = req;
+    const designId = req.query.designId; // Get designId from query params
+
+    if (!designId) {
+      throw new BadRequestException('Design ID is required');
+    }
+
+    const userId = user.user_id;
+
+    // Check for existing screenshot by looking at the publicId pattern
+    const existingScreenshot = await this.uploadsService.findFirst({
+      where: {
+        userId,
+        publicId: { contains: `prodsnap-screenshots/${userId}/${designId}` },
+      },
+    });
+
+    const fileNameWithoutExt = data.filename.split('.')[0];
+    const id = existingScreenshot
+      ? existingScreenshot.publicId.split('/').pop().split('-')[0]
+      : shortId();
+    const public_id = `prodsnap-screenshots/${userId}/${designId}/${id}-${fileNameWithoutExt}`;
+
+    const { url } = await this.cloudinaryService.uploadPhotoFromStream(
+      data.file,
+      public_id,
+    );
+
+    if (existingScreenshot) {
+      // Update existing screenshot
+      const updated = await this.uploadsService.update(existingScreenshot.id, {
+        url: ensureHttps(url),
+        publicId: public_id,
+        updatedAt: new Date(),
+      });
+      return { url: ensureHttps(updated.url) };
+    }
+
+    // Create new screenshot
+    await this.uploadsService.create({
+      url: ensureHttps(url),
+      userId,
+      publicId: public_id,
+      backgroundRemoved: false,
+    });
+
+    return { url: ensureHttps(url) };
   }
 }

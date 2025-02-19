@@ -18,3 +18,7 @@ export function shortId(): string {
 
   return sixDigitId;
 }
+
+export function ensureHttps(url: string): string {
+  return url.replace(/^http:/, 'https:');
+}
