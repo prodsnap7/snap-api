@@ -1,4 +1,8 @@
-const { screenshotElement } = require('../dist/lib/utils/screenshot2');
+// disable eslint
+/* eslint-disable */
+const {
+  screenshotElement,
+} = require('../dist/lib/utils/scrapingbee-screenshot');
 const { config } = require('dotenv');
 
 config();

@@ -1,68 +1,85 @@
-const cluster = require('cluster');
-const os = require('os');
+// disable eslint
+/* eslint-disable */
 const { NestFactory } = require('@nestjs/core');
 const { AppModule } = require('../dist/app.module');
 const { PrismaService } = require('../dist/prisma/prisma.service');
-const { CloudinaryService } = require('../dist/uploads/cloudinary.service');
 const { config } = require('dotenv');
-const generateFontImage = require('./generate-font-img');
 const { default: axios } = require('axios');
 
 config();
 
 async function fetchFonts() {
-    const res = await axios.get('https://www.googleapis.com/webfonts/v1/webfonts?key=' + process.env.GOOGLE_API_KEY);
-    return res.data.items.slice(10, 200);
+  const res = await axios.get(
+    'https://www.googleapis.com/webfonts/v1/webfonts?key=' +
+      process.env.GOOGLE_API_KEY,
+  );
+  return res.data.items;
 }
 
-async function upsertDatabaseEntities(prisma, font) {
-    const family = await prisma.family.upsert({
-        where: { name: font.family },
-        update: {},
-        create: { name: font.family },
-    });
+async function upsertCategories(prisma, fonts) {
+  const uniqueCategories = [...new Set(fonts.map((f) => f.category))];
+  console.log('Upserting categories...');
 
-    const category = await prisma.category.upsert({
-        where: { name: font.category },
+  await prisma.$transaction(
+    uniqueCategories.map((name) =>
+      prisma.category.upsert({
+        where: { name },
         update: {},
-        create: { name: font.category },
-    });
+        create: { name },
+      }),
+    ),
+  );
 
-    const kind = await prisma.kind.upsert({
-        where: { name: font.kind },
-        update: {},
-        create: { name: font.kind },
-    });
-
-    return { family, category, kind };
+  return prisma.category.findMany();
 }
 
+async function upsertKinds(prisma, fonts) {
+  const uniqueKinds = [...new Set(fonts.map((f) => f.kind))];
+  console.log('Upserting kinds...');
 
-async function processFontVariants(cloudinary, font) {
-  let fontVariants = [];
+  await prisma.$transaction(
+    uniqueKinds.map((name) =>
+      prisma.kind.upsert({
+        where: { name },
+        update: {},
+        create: { name },
+      }),
+    ),
+  );
 
-  for (let variant of font.variants) {
-      const { style, weight } = parseVariantStyleAndWeight(variant);
-      const fontUrl = constructVariantGoogleFontsUrl(font.family, style, weight);
-
-      const imgBuffer = await generateFontImage(font.family, variant, font.files[variant]);
-      const res = await cloudinary.uploadPhotoFromStream(imgBuffer, `prodsnap-fonts/${font.family}-${variant}`);
-
-      fontVariants.push({
-          name: variant,
-          imageUrl: res.url,
-          style: style,
-          weight: weight,
-          fontUrl: fontUrl
-      });
-  }
-
-  return fontVariants;
+  return prisma.kind.findMany();
 }
 
-function constructVariantGoogleFontsUrl(family, style, weight) {
-  let urlPart = style === 'italic' ? `ital,wght@1,${weight}` : `wght@${weight}`;
-  return `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:${urlPart}`;
+async function upsertFamilies(prisma, fonts) {
+  const uniqueFamilies = [...new Set(fonts.map((f) => f.family))];
+  console.log('Upserting families...');
+
+  await prisma.$transaction(
+    uniqueFamilies.map((name) =>
+      prisma.family.upsert({
+        where: { name },
+        update: {},
+        create: { name },
+      }),
+    ),
+  );
+
+  return prisma.family.findMany();
+}
+
+function processFontVariants(font) {
+  return font.variants.map((variant) => {
+    const { style, weight } = parseVariantStyleAndWeight(variant);
+    const fontUrl = font.files[variant];
+
+    return {
+      name: variant,
+      imageUrl: null,
+      style,
+      weight,
+      fontUrl,
+    };
+  });
 }
 
 function parseVariantStyleAndWeight(variant) {
@@ -70,74 +87,154 @@ function parseVariantStyleAndWeight(variant) {
   let weight = '400';
 
   if (variant === 'italic') {
-      style = 'italic';
+    style = 'italic';
   } else if (variant.match(/^\d+$/)) {
-      weight = variant;
+    weight = variant;
   } else if (variant !== 'regular') {
-      const match = variant.match(/(\d+)(italic)/);
-      if (match) {
-          weight = match[1];
-          style = 'italic';
-      }
+    const match = variant.match(/(\d+)(italic)/);
+    if (match) {
+      weight = match[1];
+      style = 'italic';
+    }
   }
 
   return { style, weight };
 }
 
+async function bootstrap() {
+  const app = await NestFactory.createApplicationContext(AppModule);
+  const prisma = app.get(PrismaService);
 
+  try {
+    // Validate data model first
+    console.log('Validating data model...');
+    try {
+      await prisma.font.findFirst({
+        where: {
+          AND: [{ familyId: 1 }, { categoryId: 1 }, { kindId: 1 }],
+        },
+      });
+      console.log('✓ Data model validation successful');
+    } catch (error) {
+      console.error('Data model validation failed:', error);
+      return;
+    }
 
-async function insertFont(prisma, fontData) {
-    await prisma.font.create({ data: fontData });
-}
+    console.log('Fetching fonts from Google API...');
+    const fonts = await fetchFonts();
+    const totalFonts = fonts.length;
+    const totalVariants = fonts.reduce(
+      (sum, font) => sum + font.variants.length,
+      0,
+    );
+    console.log(
+      `Found ${totalFonts} fonts with ${totalVariants} total variants`,
+    );
 
+    console.log('\nStarting database operations...');
+    console.time('Database operations');
 
-if (cluster.isMaster) {
-  const numCPUs = os.cpus().length;
+    // Batch upsert all categories, kinds, and families first
+    console.log('\nUpserting reference tables...');
+    console.time('Reference tables');
+    const [categories, kinds, families] = await Promise.all([
+      upsertCategories(prisma, fonts),
+      upsertKinds(prisma, fonts),
+      upsertFamilies(prisma, fonts),
+    ]);
+    console.timeEnd('Reference tables');
+    console.log(`✓ Categories: ${categories.length}`);
+    console.log(`✓ Kinds: ${kinds.length}`);
+    console.log(`✓ Families: ${families.length}`);
 
-  async function masterProcess() {
-      console.log(`Master process running, forking ${numCPUs} workers...`);
+    // Create lookup maps for faster access
+    const categoryMap = Object.fromEntries(categories.map((c) => [c.name, c]));
+    const kindMap = Object.fromEntries(kinds.map((k) => [k.name, k]));
+    const familyMap = Object.fromEntries(families.map((f) => [f.name, f]));
 
-      const fonts = await fetchFonts(); // Assuming fetchFonts() is available here
-      const chunkSize = Math.ceil(fonts.length / numCPUs);
+    // Process fonts in batches
+    const BATCH_SIZE = 50;
+    let processedFonts = 0;
+    let processedVariants = 0;
 
-      for (let i = 0; i < numCPUs; i++) {
-          const chunk = fonts.slice(i * chunkSize, (i + 1) * chunkSize);
-          const worker = cluster.fork();
-          worker.send(chunk); // Send chunk to worker
+    console.log('\nProcessing fonts and variants...');
+    console.time('Font processing');
+
+    for (let i = 0; i < fonts.length; i += BATCH_SIZE) {
+      const batch = fonts.slice(i, i + BATCH_SIZE);
+      const batchVariantCount = batch.reduce(
+        (sum, font) => sum + font.variants.length,
+        0,
+      );
+
+      console.time(`Batch ${i / BATCH_SIZE + 1}`);
+
+      // Process each font in the batch
+      for (const font of batch) {
+        // Find existing font
+        const existingFont = await prisma.font.findFirst({
+          where: {
+            AND: [
+              { familyId: familyMap[font.family].id },
+              { categoryId: categoryMap[font.category].id },
+              { kindId: kindMap[font.kind].id },
+            ],
+          },
+        });
+
+        if (existingFont) {
+          // Update existing font
+          await prisma.variant.deleteMany({
+            where: { fontId: existingFont.id },
+          });
+
+          await prisma.font.update({
+            where: { id: existingFont.id },
+            data: {
+              subsets: font.subsets,
+              variants: {
+                create: processFontVariants(font),
+              },
+            },
+          });
+        } else {
+          // Create new font
+          await prisma.font.create({
+            data: {
+              family: { connect: { id: familyMap[font.family].id } },
+              category: { connect: { id: categoryMap[font.category].id } },
+              kind: { connect: { id: kindMap[font.kind].id } },
+              subsets: font.subsets,
+              variants: { create: processFontVariants(font) },
+            },
+          });
+        }
       }
+
+      console.timeEnd(`Batch ${i / BATCH_SIZE + 1}`);
+
+      processedFonts += batch.length;
+      processedVariants += batchVariantCount;
+
+      console.log(
+        `Progress: ${processedFonts}/${totalFonts} fonts (${Math.round((processedFonts / totalFonts) * 100)}%)`,
+        `and ${processedVariants}/${totalVariants} variants (${Math.round((processedVariants / totalVariants) * 100)}%)`,
+      );
+    }
+
+    console.timeEnd('Font processing');
+    console.timeEnd('Database operations');
+    console.log('\nOperation completed successfully!');
+    console.log(
+      `Final count: ${processedFonts} fonts and ${processedVariants} variants processed`,
+    );
+  } catch (error) {
+    console.error('Fatal error:', error);
+    if (error.code) console.error('Error code:', error.code);
+    if (error.meta) console.error('Error metadata:', error.meta);
+  } finally {
+    await app.close();
   }
-
-  masterProcess().catch(err => {
-      console.error('Error in master process:', err);
-  });
-
-  cluster.on('exit', (worker, code, signal) => {
-      console.log(`Worker ${worker.process.pid} died, forking new worker...`);
-      cluster.fork();
-  });
-} else {
-  process.on('message', async (chunk) => {
-      const app = await NestFactory.createApplicationContext(AppModule);
-      const prisma = app.get(PrismaService);
-      const cloudinary = app.get(CloudinaryService);
-
-      try {
-          for (const font of chunk) {
-              const { family, category, kind } = await upsertDatabaseEntities(prisma, font);
-              const fontVariants = await processFontVariants(cloudinary, font);
-
-              await insertFont(prisma, {
-                  family: { connect: { id: family.id } },
-                  category: { connect: { id: category.id } },
-                  kind: { connect: { id: kind.id } },
-                  subsets: font.subsets,
-                  variants: { create: fontVariants },
-              });
-          }
-      } catch (error) {
-          console.error(error);
-      } finally {
-          await app.close();
-      }
-  });
 }
+
+bootstrap();

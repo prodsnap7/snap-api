@@ -20,6 +20,45 @@ export class FontsService {
     nextPage: number | null;
     hasNextPage: boolean;
   }> {
+    // if page is not provided, return all fonts
+    if (!page) {
+      // only get the fonts that have at least one variant with a valid imageUrl
+      const fonts = await this.db.font.findMany({
+        where: {
+          variants: {
+            none: {
+              imageUrl: '',
+            },
+          },
+        },
+        include: {
+          family: true,
+          category: true,
+          kind: true,
+          variants: true,
+        },
+      });
+
+      const formattedFonts = fonts.map((font) => ({
+        fontFamily: font.family.name,
+        category: font.category.name,
+        kind: font.kind.name,
+        variants: font.variants.map((variant) => ({
+          name: variant.name,
+          imageUrl: variant.imageUrl || '',
+          weight: +variant.weight,
+          style: variant.style,
+          family: font.family.name,
+          url: variant.fontUrl,
+        })),
+      }));
+
+      return {
+        fonts: formattedFonts,
+        nextPage: null,
+        hasNextPage: false,
+      };
+    }
     const pageSize = 30;
     const skipAmount = (page - 1) * pageSize;
 
@@ -45,7 +84,7 @@ export class FontsService {
       kind: font.kind.name,
       variants: font.variants.map((variant) => ({
         name: variant.name,
-        imageUrl: variant.imageUrl,
+        imageUrl: variant.imageUrl || '',
         weight: +variant.weight,
         style: variant.style,
         family: font.family.name,
