@@ -95,7 +95,7 @@ export class UploadsController {
   async uploadScreenshot(@Req() req) {
     const data = await req.file();
     const { user } = req;
-    const designId = req.query.designId; // Get designId from query params
+    const designId = req.query.designId;
 
     if (!designId) {
       throw new BadRequestException('Design ID is required');
@@ -103,43 +103,24 @@ export class UploadsController {
 
     const userId = user.user_id;
 
-    // Check for existing screenshot by looking at the publicId pattern
-    const existingScreenshot = await this.uploadsService.findFirst({
-      where: {
-        userId,
-        publicId: { contains: `prodsnap-screenshots/${userId}/${designId}` },
-      },
-    });
+    // Create a consistent public_id for this design's screenshot
+    const public_id = `prodsnap-screenshots/${userId}/${designId}-screenshot`;
 
-    const fileNameWithoutExt = data.filename.split('.')[0];
-    const id = existingScreenshot
-      ? existingScreenshot.publicId.split('/').pop().split('-')[0]
-      : shortId();
-    const public_id = `prodsnap-screenshots/${userId}/${designId}/${id}-${fileNameWithoutExt}`;
+    try {
+      // Try to delete existing screenshot if it exists
+      await this.cloudinaryService.deletePhoto(public_id);
 
-    const { url } = await this.cloudinaryService.uploadPhotoFromStream(
-      data.file,
-      public_id,
-    );
+      // Upload new screenshot
+      const { url } = await this.cloudinaryService.uploadPhotoFromStream(
+        data.file,
+        public_id,
+      );
 
-    if (existingScreenshot) {
-      // Update existing screenshot
-      const updated = await this.uploadsService.update(existingScreenshot.id, {
-        url: ensureHttps(url),
-        publicId: public_id,
-        updatedAt: new Date(),
-      });
-      return { url: ensureHttps(updated.url) };
+      // Return the HTTPS URL
+      return { url: ensureHttps(url) };
+    } catch (error) {
+      console.error('Error handling screenshot:', error);
+      throw new BadRequestException('Failed to process screenshot');
     }
-
-    // Create new screenshot
-    await this.uploadsService.create({
-      url: ensureHttps(url),
-      userId,
-      publicId: public_id,
-      backgroundRemoved: false,
-    });
-
-    return { url: ensureHttps(url) };
   }
 }
