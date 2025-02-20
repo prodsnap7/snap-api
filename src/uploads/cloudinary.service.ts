@@ -50,4 +50,14 @@ export class CloudinaryService {
   async uploadPhotoFromUrl(url: string, public_id: string) {
     return cloudinary.uploader.upload(url, { public_id });
   }
+
+  async deletePhoto(public_id: string): Promise<boolean> {
+    try {
+      const result = await cloudinary.uploader.destroy(public_id);
+      return result.result === 'ok';
+    } catch (error) {
+      console.error('Error deleting image from Cloudinary:', error);
+      return false;
+    }
+  }
 }
