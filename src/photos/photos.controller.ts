@@ -1,5 +1,6 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Res } from '@nestjs/common';
 import { PhotosService } from './photos.service';
+import { FastifyReply } from 'fastify';
 
 @Controller('photos')
 export class PhotosController {
@@ -8,5 +9,23 @@ export class PhotosController {
   @Get('search')
   searchPhotos(@Query('q') query: string) {
     return this.photosService.searchPhotos(query);
+  }
+
+  @Get('proxy')
+  async proxyPhoto(@Query('url') url: string, @Res() res: FastifyReply) {
+    if (!url) {
+      return res.status(400).send('URL is required');
+    }
+
+    // Validate URL is from Pexels
+    if (!url.includes('images.pexels.com')) {
+      return res.status(400).send('Invalid image source');
+    }
+
+    try {
+      await this.photosService.streamPhoto(url, res);
+    } catch (error) {
+      res.status(500).send('Failed to process image');
+    }
   }
 }
