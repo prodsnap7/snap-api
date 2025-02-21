@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma, uploads as UploadModel } from '@prisma/client';
 import { ensureHttps } from 'src/lib/utils';
@@ -51,9 +51,18 @@ export class UploadsService {
   }
 
   async remove(id: number): Promise<UploadModel> {
-    return this.db.uploads.delete({
-      where: { id },
-    });
+    try {
+      return await this.db.uploads.delete({
+        where: { id },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') {
+          throw new NotFoundException(`Upload with ID ${id} not found`);
+        }
+      }
+      throw error;
+    }
   }
 
   async update(id: number, data: Partial<UploadModel>): Promise<UploadModel> {

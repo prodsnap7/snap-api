@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -8,6 +9,7 @@ import {
   Query,
   Req,
   Res,
+  BadRequestException,
 } from '@nestjs/common';
 import { FastifyReply } from 'fastify';
 import { Design as DesignModel } from '@prisma/client';
@@ -72,5 +74,30 @@ export class DesignsController {
 
     // Send the buffer as the response
     res.send(imageBuffer);
+  }
+
+  @Delete(':id')
+  async deleteDesign(@Param('id') id: string, @Req() req) {
+    const { user } = req;
+
+    // Get the design to check ownership
+    const design = await this.designsService.design({ id });
+
+    if (!design) {
+      throw new BadRequestException('Design not found');
+    }
+
+    if (design.userId !== user.user_id) {
+      throw new BadRequestException('Not authorized to delete this design');
+    }
+
+    try {
+      // Delete the design and its thumbnail
+      await this.designsService.deleteDesign(id);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting design:', error);
+      throw new BadRequestException('Failed to delete design');
+    }
   }
 }

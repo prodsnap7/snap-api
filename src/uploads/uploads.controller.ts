@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Post,
   Req,
+  Param,
   BadRequestException,
 } from '@nestjs/common';
 import { shortId, ensureHttps } from 'src/lib/utils';
@@ -121,6 +123,35 @@ export class UploadsController {
     } catch (error) {
       console.error('Error handling screenshot:', error);
       throw new BadRequestException('Failed to process screenshot');
+    }
+  }
+
+  @Delete(':id')
+  async deleteUpload(@Param('id') id: string, @Req() req) {
+    const { user } = req;
+
+    // Get the upload to check ownership and get publicId
+    const upload = await this.uploadsService.findOne({ id: Number(id) });
+
+    if (!upload) {
+      throw new BadRequestException('Upload not found');
+    }
+
+    if (upload.userId !== user.user_id) {
+      throw new BadRequestException('Not authorized to delete this upload');
+    }
+
+    try {
+      // Delete from Cloudinary first
+      await this.cloudinaryService.deletePhoto(upload.publicId);
+
+      // Then delete from database
+      await this.uploadsService.remove(Number(id));
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting upload:', error);
+      throw new BadRequestException('Failed to delete upload');
     }
   }
 }
