@@ -13,6 +13,7 @@ import { BullModule } from '@nestjs/bull';
 import { BlocksConsumer } from './blocks/blocks.consumer';
 import { DesignsConsumer } from './designs/designs.consumer';
 import { PhotosModule } from './photos/photos.module';
+import { TemplatesModule } from './templates/templates.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { PhotosModule } from './photos/photos.module';
     PrismaModule,
     BlocksModule,
     UploadsModule,
+    TemplatesModule,
     FontsModule,
     IconsModule,
     ConfigModule.forRoot({ isGlobal: true }),
