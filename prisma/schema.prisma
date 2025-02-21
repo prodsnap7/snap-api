@@ -65,6 +65,8 @@ model Design {
   groups       String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  templateId   String?
+  template     Template? @relation(fields: [templateId], references: [id])
 
   @@map("designs")
 }
@@ -100,4 +102,24 @@ model uploads {
   userId            String
   publicId          String
   backgroundRemoved Boolean  @default(false)
+}
+
+model Template {
+  id           String   @id @default(uuid())
+  name         String
+  userId       String
+  canvasWidth  Int
+  canvasHeight Int
+  background   String
+  elements     String
+  fonts        String[]
+  thumbnail    String   @default("")
+  groups       String
+  tags         String[]
+  createdAt    DateTime @default(now())
+  useCount     Int      @default(0)
+  designs      Design[]
+
+  @@index([tags])
+  @@map("templates")
 }
