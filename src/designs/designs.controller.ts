@@ -61,6 +61,7 @@ export class DesignsController {
     );
   }
 
+  @Public()
   @Get(':id/download')
   async downloadDesign(@Param('id') id: string, @Res() res: FastifyReply) {
     const imageBuffer = await this.designsService.downloadDesign(id);

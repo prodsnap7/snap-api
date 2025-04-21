@@ -37,3 +37,5 @@ lerna-debug.log*
 firebase.config.json
 
 .cache
+
+.env
