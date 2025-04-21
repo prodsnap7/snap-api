@@ -1,5 +1,6 @@
 import { ScrapingBeeClient } from 'scrapingbee';
 import * as dotenv from 'dotenv';
+import { AxiosError } from 'axios';
 
 dotenv.config();
 
@@ -12,7 +13,12 @@ export async function screenshotElement(
     wait?: number;
   },
 ): Promise<Buffer | void> {
-  console.log('Taking screenshot with ScrapingBee...', url, selector);
+  console.log(
+    'Taking screenshot with ScrapingBee...',
+    url,
+    selector,
+    process.env.SCRAPINGBEE_API_KEY,
+  );
 
   try {
     if (!process.env.SCRAPINGBEE_API_KEY) {
@@ -50,6 +56,29 @@ export async function screenshotElement(
       console.log('Could not take screenshot');
     }
   } catch (error) {
-    console.error('Screenshot error:', error);
+    if (error instanceof AxiosError) {
+      console.error(
+        'ScrapingBee API Error:',
+        error.response?.status,
+        error.response?.statusText,
+      );
+      // Attempt to decode and log the response data if available
+      if (error.response?.data) {
+        try {
+          const errorData = JSON.parse(
+            Buffer.from(error.response.data).toString(),
+          );
+          console.error('Error details:', errorData);
+        } catch (parseError) {
+          console.error(
+            'Could not parse error response data:',
+            Buffer.from(error.response.data).toString(),
+          );
+        }
+      }
+    } else {
+      // Log other types of errors
+      console.error('Screenshot error:', error);
+    }
   }
 }
