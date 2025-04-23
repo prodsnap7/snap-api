@@ -13,7 +13,7 @@ export async function screenshotElement(
     //   browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_IO_API_KEY}`,
     // });
     const browser = await puppeteer.launch({
-      headless: 'new',
+      headless: true,
       defaultViewport: null,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
@@ -44,7 +44,7 @@ export async function screenshotElement(
     const screenshotBuffer = await element.screenshot();
     if (screenshotBuffer) {
       console.log('Screenshot taken');
-      return screenshotBuffer;
+      return Buffer.from(screenshotBuffer);
     } else {
       console.log('Could not take screenshot');
     }
