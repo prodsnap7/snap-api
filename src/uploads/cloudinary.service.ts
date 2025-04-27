@@ -31,6 +31,10 @@ export class CloudinaryService {
           },
           (error, result) => {
             if (error) {
+              console.error(
+                'Cloudinary upload error:',
+                JSON.stringify(error, null, 2),
+              );
               reject(error);
             } else {
               resolve(result as any);
