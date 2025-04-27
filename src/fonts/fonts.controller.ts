@@ -1,13 +1,25 @@
 import {
   Controller,
   Get,
+  Post,
+  Body,
+  Param,
   Query,
   Res,
   BadRequestException,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { FontsService } from './fonts.service';
 import { FastifyReply } from 'fastify';
 import { Public } from 'src/lib/public-modifier';
+import { IsArray, IsInt, ArrayNotEmpty } from 'class-validator';
+
+class GetFontsByIdsDto {
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsInt({ each: true })
+  ids: number[];
+}
 
 @Controller('fonts')
 export class FontsController {
@@ -36,6 +48,16 @@ export class FontsController {
       searchQuery,
       page: pageNumber,
     });
+  }
+
+  @Get(':id')
+  getFontById(@Param('id', ParseIntPipe) id: number) {
+    return this.fontsService.getFontById(id);
+  }
+
+  @Post('batch')
+  getFontsByIds(@Body() getFontsByIdsDto: GetFontsByIdsDto) {
+    return this.fontsService.getFontsByIds(getFontsByIdsDto.ids);
   }
 
   @Public()

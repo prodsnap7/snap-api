@@ -26,6 +26,7 @@ type FontVariantResponse = {
 };
 
 type FontResponse = {
+  fontId: number;
   fontFamily: string;
   category: string;
   kind: string;
@@ -104,6 +105,7 @@ export class FontsService {
         url: variant.fontUrl,
       }));
       return {
+        fontId: font.id,
         fontFamily: font.family.name,
         category: font.category.name,
         kind: font.kind.name,
@@ -112,6 +114,47 @@ export class FontsService {
     });
   }
   // --- End of Private Helpers ---
+
+  // --- Get Font By Single ID ---
+  async getFontById(id: number): Promise<FontResponse> {
+    const font = await this.db.font.findUniqueOrThrow({
+      where: { id },
+      include: {
+        family: true,
+        category: true,
+        kind: true,
+        variants: true,
+      },
+    });
+    // Format the single font using the helper (needs an array)
+    const formatted = this._formatFonts([font]);
+    return formatted[0]; // Return the single formatted font
+  }
+  // --- End Get Font By Single ID ---
+
+  // --- Get Fonts By List of IDs ---
+  async getFontsByIds(ids: number[]): Promise<FontResponse[]> {
+    if (!ids || ids.length === 0) {
+      return []; // Return empty array if no IDs provided
+    }
+    const fonts = await this.db.font.findMany({
+      where: {
+        id: {
+          in: ids,
+        },
+      },
+      include: {
+        family: true,
+        category: true,
+        kind: true,
+        variants: true,
+      },
+      // Optionally add orderBy if needed
+    });
+    // Format the results using the existing helper
+    return this._formatFonts(fonts);
+  }
+  // --- End Get Fonts By List of IDs ---
 
   async getAllFonts(page: number): Promise<{
     fonts: FontResponse[];
