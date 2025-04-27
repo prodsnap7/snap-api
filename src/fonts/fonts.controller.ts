@@ -1,4 +1,10 @@
-import { Controller, Get, Query, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  Res,
+  BadRequestException,
+} from '@nestjs/common';
 import { FontsService } from './fonts.service';
 import { FastifyReply } from 'fastify';
 import { Public } from 'src/lib/public-modifier';
@@ -11,6 +17,25 @@ export class FontsController {
   getAllFonts(@Query('page') page?: number) {
     const pageNumber = page ? parseInt(page.toString(), 10) : undefined;
     return this.fontsService.getAllFonts(pageNumber);
+  }
+
+  @Get('search')
+  searchFonts(
+    @Query('searchQuery') searchQuery?: string,
+    @Query('page') page?: string,
+  ) {
+    if (!searchQuery) {
+      throw new BadRequestException('searchQuery parameter is required');
+    }
+    const pageNumber = page ? parseInt(page, 10) : undefined;
+    if (page && isNaN(pageNumber)) {
+      throw new BadRequestException('Invalid page number');
+    }
+
+    return this.fontsService.searchFonts({
+      searchQuery,
+      page: pageNumber,
+    });
   }
 
   @Public()

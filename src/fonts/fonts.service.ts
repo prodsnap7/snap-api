@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import axios from 'axios'; // Make sure axios is imported
 import { FastifyReply } from 'fastify'; // Import FastifyReply
+import { Prisma, Font } from '@prisma/client'; // Import Prisma namespace for types and Font type
 // No axios needed here anymore
 
 // Helper function (can be kept or moved to utils)
@@ -35,43 +36,73 @@ type FontResponse = {
 export class FontsService {
   constructor(private readonly db: PrismaService) {}
 
-  async getAllFonts(page: number): Promise<{
+  // --- Private Helper Function ---
+  private async _fetchAndFormatFonts(params: {
+    where: Prisma.FontWhereInput;
+    skip: number;
+    take: number;
+    page: number;
+  }): Promise<{
     fonts: FontResponse[];
     nextPage: number | null;
     hasNextPage: boolean;
   }> {
-    const pageSize = 30;
-    const skipAmount = page ? (page - 1) * pageSize : 0;
-    const takeAmount = page ? pageSize : undefined;
+    const { where, skip, take, page } = params;
 
-    const totalFontsCount = await this.db.font.count();
+    // Fetch total count matching the criteria
+    const totalFontsCount = await this.db.font.count({ where });
 
+    // Fetch the fonts matching the criteria with pagination
     const fonts = await this.db.font.findMany({
+      where,
       include: {
         family: true,
         category: true,
         kind: true,
         variants: true,
       },
-      skip: skipAmount,
-      take: takeAmount,
+      skip,
+      take,
+      // Consider adding a consistent orderBy here if needed
+      // orderBy: { family: { name: 'asc' } }
     });
 
-    // --- Reverted to simple mapping ---
-    const formattedFonts = fonts.map((font) => {
-      const processedVariants = font.variants.map((variant) => {
-        // Just return the original variant data
-        return {
-          name: variant.name,
-          imageUrl: variant.imageUrl || '',
-          weight: +variant.weight,
-          style: variant.style,
-          family: font.family.name,
-          url: variant.fontUrl, // Return the original font URL
-          // No dataUrl fetching/encoding
-        };
-      });
+    // Format the results
+    const formattedFonts = this._formatFonts(fonts);
 
+    const hasNextPage = skip + formattedFonts.length < totalFontsCount;
+
+    return {
+      fonts: formattedFonts,
+      nextPage: hasNextPage ? page + 1 : null,
+      hasNextPage,
+    };
+  }
+
+  // --- Private Formatting Helper ---
+  private _formatFonts(
+    fonts: (Font & {
+      family: { name: string };
+      category: { name: string };
+      kind: { name: string };
+      variants: {
+        name: string;
+        imageUrl: string | null;
+        weight: string;
+        style: string;
+        fontUrl: string;
+      }[];
+    })[],
+  ): FontResponse[] {
+    return fonts.map((font) => {
+      const processedVariants = font.variants.map((variant) => ({
+        name: variant.name,
+        imageUrl: variant.imageUrl || '',
+        weight: +variant.weight, // Keep the conversion here
+        style: variant.style,
+        family: font.family.name,
+        url: variant.fontUrl,
+      }));
       return {
         fontFamily: font.family.name,
         category: font.category.name,
@@ -79,17 +110,59 @@ export class FontsService {
         variants: processedVariants,
       };
     });
-    // --- End of reverted section ---
+  }
+  // --- End of Private Helpers ---
 
-    const hasNextPage = page
-      ? skipAmount + formattedFonts.length < totalFontsCount
-      : false;
+  async getAllFonts(page: number): Promise<{
+    fonts: FontResponse[];
+    nextPage: number | null;
+    hasNextPage: boolean;
+  }> {
+    const pageSize = 30;
+    const skipAmount = page ? (page - 1) * pageSize : 0;
+    // Fetch all if page is not provided (or handle differently if needed)
+    const takeAmount = page ? pageSize : undefined;
 
-    return {
-      fonts: formattedFonts,
-      nextPage: hasNextPage ? page + 1 : null,
-      hasNextPage,
+    return this._fetchAndFormatFonts({
+      where: {},
+      skip: skipAmount,
+      take: takeAmount,
+      page: page || 1, // Pass page number
+    });
+  }
+
+  async searchFonts(params: {
+    searchQuery: string;
+    page?: number; // Make page optional for search
+  }): Promise<{
+    fonts: FontResponse[];
+    nextPage: number | null;
+    hasNextPage: boolean;
+  }> {
+    const { searchQuery, page = 1 } = params;
+    const pageSize = 30;
+    const skipAmount = (page - 1) * pageSize;
+
+    // Prepare search query (ensure Prisma client supports 'search')
+    const formattedQuery = searchQuery.split(' ').filter(Boolean).join(' & ');
+    const where: Prisma.FontWhereInput = {
+      family: {
+        name: {
+          search: formattedQuery,
+          mode: 'insensitive',
+        },
+      },
     };
+
+    // Add comments about preview features and indexing if needed
+    // ...
+
+    return this._fetchAndFormatFonts({
+      where,
+      skip: skipAmount,
+      take: pageSize,
+      page: page,
+    });
   }
 
   // --- New Proxy Method ---
