@@ -40,6 +40,7 @@ export interface FontIndexData {
   fontFamily: string;
   category: string;
   kind: string;
+  hasImageUrl: boolean;
   // Add other fields needed for indexing
 }
 
@@ -203,19 +204,32 @@ export class FontsService {
         family: true,
         category: true,
         kind: true,
-        // Only include variants if you need variant data in the index
+        // Include variants now to check for imageUrl
+        variants: {
+          select: {
+            imageUrl: true, // Only select the imageUrl field
+          },
+        },
       },
     });
 
     // Transform to the structure needed by Typesense
-    return fontsFromDb.map((font) => ({
-      id: font.id.toString(), // String ID for Typesense
-      fontId: font.id,
-      fontFamily: font.family.name,
-      category: font.category.name,
-      kind: font.kind.name,
-      // Map other fields as needed for your Typesense schema
-    }));
+    return fontsFromDb.map((font) => {
+      // Determine if any variant has an image URL
+      const hasImage = font.variants.some(
+        (variant) => variant.imageUrl && variant.imageUrl.trim() !== '',
+      );
+
+      return {
+        id: font.id.toString(), // String ID for Typesense
+        fontId: font.id,
+        fontFamily: font.family.name,
+        category: font.category.name,
+        kind: font.kind.name,
+        hasImageUrl: hasImage, // Set the boolean field
+        // Map other fields as needed for your Typesense schema
+      };
+    });
   }
   // --- End Helper for Indexing ---
 

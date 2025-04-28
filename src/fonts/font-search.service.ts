@@ -12,6 +12,7 @@ interface FontDocument {
   fontFamily: string;
   category: string;
   kind: string;
+  hasImageUrl: boolean;
   // Add other indexed fields here...
 }
 
@@ -29,6 +30,7 @@ export class FontSearchService implements OnModuleInit {
       { name: 'fontFamily', type: 'string' as const, index: true },
       { name: 'category', type: 'string' as const, index: true, facet: true },
       { name: 'kind', type: 'string' as const, facet: true },
+      { name: 'hasImageUrl', type: 'bool' as const, filter: true, facet: true },
       // Add other fields you might want to index directly
     ],
     // Optional: Define default sorting field
@@ -175,14 +177,24 @@ export class FontSearchService implements OnModuleInit {
         ? '*'
         : searchQuery; // Otherwise, use the provided query (which might be empty if no filter either)
 
+    // --- Build filter string ---
+    const filterConditions: string[] = [];
+    // Always filter for documents that have an image URL
+    filterConditions.push(`hasImageUrl:=true`);
+    // Add category filter if provided
+    if (filterByCategory) {
+      filterConditions.push(`category:=${filterByCategory}`);
+    }
+    const filterByString = filterConditions.join(' && '); // Combine filters with AND
+    // --- End Build filter string ---
+
     // Use `any` for search params type if specific import fails
     const searchParameters: any = {
       q: effectiveQuery,
       query_by: 'fontFamily,category',
       page: page,
       per_page: limit,
-      filter_by: filterByCategory ? `category:=${filterByCategory}` : undefined,
-      // sort_by: '_text_match:desc,fontFamily:asc', // Optional sorting
+      filter_by: filterByString, // Use combined filter string
     };
 
     // If effectiveQuery is '*' and there's no filter, it doesn't make sense to search.
