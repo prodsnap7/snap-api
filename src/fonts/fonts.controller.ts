@@ -9,7 +9,8 @@ import {
   BadRequestException,
   ParseIntPipe,
 } from '@nestjs/common';
-import { FontsService } from './fonts.service';
+import { FontsService, FontResponse } from './fonts.service';
+import { FontSearchService } from './font-search.service';
 import { FastifyReply } from 'fastify';
 import { Public } from 'src/lib/public-modifier';
 import { IsArray, IsInt, ArrayNotEmpty } from 'class-validator';
@@ -23,7 +24,10 @@ class GetFontsByIdsDto {
 
 @Controller('fonts')
 export class FontsController {
-  constructor(private readonly fontsService: FontsService) {}
+  constructor(
+    private readonly fontsService: FontsService,
+    private readonly fontSearchService: FontSearchService,
+  ) {}
 
   @Get()
   getAllFonts(@Query('page') page?: number) {
@@ -32,22 +36,59 @@ export class FontsController {
   }
 
   @Get('search')
-  searchFonts(
+  async searchFonts(
     @Query('query') searchQuery?: string,
     @Query('page') page?: string,
-  ) {
-    if (!searchQuery) {
-      throw new BadRequestException('searchQuery parameter is required');
+    @Query('limit') limit?: string,
+    @Query('filterByCategory') filterByCategory?: string,
+  ): Promise<{
+    fonts: FontResponse[];
+    totalHits: number;
+    totalPages: number;
+    currentPage: number;
+  }> {
+    if (!searchQuery && !filterByCategory) {
+      throw new BadRequestException(
+        'At least one of query or filterByCategory parameter is required',
+      );
     }
-    const pageNumber = page ? parseInt(page, 10) : undefined;
-    if (page && isNaN(pageNumber)) {
+    const pageNumber = page ? parseInt(page, 10) : 1;
+    const limitNumber = limit ? parseInt(limit, 10) : 10;
+    if (isNaN(pageNumber) || pageNumber < 1) {
       throw new BadRequestException('Invalid page number');
     }
+    if (isNaN(limitNumber) || limitNumber < 1) {
+      throw new BadRequestException('Invalid limit number');
+    }
 
-    return this.fontsService.searchFonts({
-      searchQuery,
+    const searchResult = await this.fontSearchService.searchFonts({
+      searchQuery: searchQuery || '',
       page: pageNumber,
+      limit: limitNumber,
+      filterByCategory,
     });
+
+    if (searchResult.ids.length === 0) {
+      return {
+        fonts: [],
+        totalHits: searchResult.totalHits,
+        totalPages: searchResult.totalPages,
+        currentPage: searchResult.currentPage,
+      };
+    }
+
+    const fontsFromDb = await this.fontsService.getFontsByIds(searchResult.ids);
+
+    const orderedFonts = searchResult.ids
+      .map((id) => fontsFromDb.find((font) => font.fontId === id))
+      .filter((font) => font !== undefined) as FontResponse[];
+
+    return {
+      fonts: orderedFonts,
+      totalHits: searchResult.totalHits,
+      totalPages: searchResult.totalPages,
+      currentPage: searchResult.currentPage,
+    };
   }
 
   @Get(':id')

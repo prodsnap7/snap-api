@@ -14,24 +14,34 @@ const getMimeType = (url: string): string => {
   return 'application/octet-stream'; // Default fallback
 };
 
-// Revert variant response type
-type FontVariantResponse = {
+// Export the type definitions so they can be imported elsewhere
+export type FontVariantResponse = {
   name: string;
   imageUrl: string;
   weight: number;
   style: string;
   family: string;
   url: string;
-  // Removed dataUrl
 };
 
-type FontResponse = {
+export type FontResponse = {
   fontId: number;
   fontFamily: string;
   category: string;
   kind: string;
   variants: FontVariantResponse[];
 };
+
+// --- Helper type for indexing data structure ---
+// Define this here or in a shared types file
+export interface FontIndexData {
+  id: string; // Typesense document ID (string version of fontId)
+  fontId: number;
+  fontFamily: string;
+  category: string;
+  kind: string;
+  // Add other fields needed for indexing
+}
 
 @Injectable()
 export class FontsService {
@@ -95,11 +105,21 @@ export class FontsService {
       }[];
     })[],
   ): FontResponse[] {
-    return fonts.map((font) => {
+    // Filter fonts first: only include those with at least one variant having an image URL
+    const fontsWithImages = fonts.filter(
+      (font) =>
+        font.variants &&
+        font.variants.some(
+          (variant) => variant.imageUrl && variant.imageUrl.trim() !== '',
+        ),
+    );
+
+    // Now map the filtered fonts
+    return fontsWithImages.map((font) => {
       const processedVariants = font.variants.map((variant) => ({
         name: variant.name,
-        imageUrl: variant.imageUrl || '',
-        weight: +variant.weight, // Keep the conversion here
+        imageUrl: variant.imageUrl || '', // Ensure empty string if null
+        weight: +variant.weight,
         style: variant.style,
         family: font.family.name,
         url: variant.fontUrl,
@@ -109,7 +129,7 @@ export class FontsService {
         fontFamily: font.family.name,
         category: font.category.name,
         kind: font.kind.name,
-        variants: processedVariants,
+        variants: processedVariants, // All variants are returned for the matching font
       };
     });
   }
@@ -174,39 +194,30 @@ export class FontsService {
     });
   }
 
-  async searchFonts(params: {
-    searchQuery: string;
-    page?: number; // Make page optional for search
-  }): Promise<{
-    fonts: FontResponse[];
-    nextPage: number | null;
-    hasNextPage: boolean;
-  }> {
-    const { searchQuery, page = 1 } = params;
-    const pageSize = 30;
-    const skipAmount = (page - 1) * pageSize;
-
-    // Prepare search query (ensure Prisma client supports 'search')
-    const formattedQuery = searchQuery.split(' ').filter(Boolean).join(' & ');
-    const where: Prisma.FontWhereInput = {
-      family: {
-        name: {
-          search: formattedQuery,
-          mode: 'insensitive',
-        },
+  // --- Add Helper for Indexing Data ---
+  // Called by FontSearchService or an indexing script
+  async getAllFontsForIndexing(): Promise<FontIndexData[]> {
+    // Fetch data needed for Typesense index
+    const fontsFromDb = await this.db.font.findMany({
+      include: {
+        family: true,
+        category: true,
+        kind: true,
+        // Only include variants if you need variant data in the index
       },
-    };
-
-    // Add comments about preview features and indexing if needed
-    // ...
-
-    return this._fetchAndFormatFonts({
-      where,
-      skip: skipAmount,
-      take: pageSize,
-      page: page,
     });
+
+    // Transform to the structure needed by Typesense
+    return fontsFromDb.map((font) => ({
+      id: font.id.toString(), // String ID for Typesense
+      fontId: font.id,
+      fontFamily: font.family.name,
+      category: font.category.name,
+      kind: font.kind.name,
+      // Map other fields as needed for your Typesense schema
+    }));
   }
+  // --- End Helper for Indexing ---
 
   // --- New Proxy Method ---
   async proxyFont(url: string, res: FastifyReply): Promise<void> {
