@@ -33,7 +33,7 @@ export class FontsController {
 
   @Get('search')
   searchFonts(
-    @Query('searchQuery') searchQuery?: string,
+    @Query('query') searchQuery?: string,
     @Query('page') page?: string,
   ) {
     if (!searchQuery) {
