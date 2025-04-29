@@ -2,6 +2,8 @@
 # exit on error
 set -o errexit
 
+rm -rf scripts
+
 # Install dependencies
 yarn install
 
