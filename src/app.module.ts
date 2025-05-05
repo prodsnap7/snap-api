@@ -14,6 +14,8 @@ import { BlocksConsumer } from './blocks/blocks.consumer';
 import { DesignsConsumer } from './designs/designs.consumer';
 import { PhotosModule } from './photos/photos.module';
 import { TemplatesModule } from './templates/templates.module';
+import { PuppeteerService } from './lib/utils/puppeteer.service';
+import { ScreenshotService } from './lib/utils/screenshot';
 
 @Module({
   imports: [
@@ -41,10 +43,13 @@ import { TemplatesModule } from './templates/templates.module';
     BlocksConsumer,
     DesignsConsumer,
     FirebaseAuthStrategy,
+    PuppeteerService,
+    ScreenshotService,
     {
       provide: APP_GUARD,
       useClass: FirebaseAuthGuard,
     },
   ],
+  exports: [PuppeteerService, ScreenshotService],
 })
 export class AppModule {}
