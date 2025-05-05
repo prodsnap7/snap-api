@@ -21,7 +21,7 @@ export class ScreenshotService {
       console.log('Navigating to URL:', url);
       await page.goto(url, { waitUntil: 'networkidle0' });
 
-      await page.setViewport({ width: 2400, height: 2000 });
+      await page.setViewport({ width: 4000, height: 4000 });
       console.log('Page loaded successfully');
 
       // Explicitly wait for images within the selector to be loaded.
