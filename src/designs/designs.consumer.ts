@@ -2,7 +2,7 @@ import { Process, Processor } from '@nestjs/bull';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DESIGN_PHOTO_QUEUE } from 'src/constants';
-import { screenshotElement } from 'src/lib/utils/scrapingbee-screenshot';
+import { ScreenshotService } from 'src/lib/utils/screenshot';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CloudinaryService } from 'src/uploads/cloudinary.service';
 
@@ -13,6 +13,7 @@ export class DesignsConsumer {
     private readonly db: PrismaService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly configService: ConfigService,
+    private readonly screenshotService: ScreenshotService,
   ) {}
 
   @Process('create-thumbnail')
@@ -23,7 +24,7 @@ export class DesignsConsumer {
     const url = this.configService.get('BASE_APP_URL') + `/preview/${designId}`;
     const selector = '#preview-canvas';
 
-    const photo = await screenshotElement(url, selector);
+    const photo = await this.screenshotService.screenshotElement(url, selector);
 
     // upload the photo to cloudinary
     // then update the design with the photo URL

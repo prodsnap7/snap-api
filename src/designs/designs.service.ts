@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma, Design } from '@prisma/client';
 import { Queue } from 'bull';
 import { DESIGN_PHOTO_QUEUE } from 'src/constants';
-import { screenshotElement } from 'src/lib/utils/screenshot';
+import { ScreenshotService } from 'src/lib/utils/screenshot';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CloudinaryService } from 'src/uploads/cloudinary.service';
 
@@ -15,6 +15,7 @@ export class DesignsService {
     private readonly configService: ConfigService,
     @InjectQueue(DESIGN_PHOTO_QUEUE) private readonly designPhotoQueue: Queue,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly screenshotService: ScreenshotService,
   ) {}
 
   async design(
@@ -73,7 +74,7 @@ export class DesignsService {
     const url = this.configService.get('BASE_APP_URL') + `/preview/${id}`;
     const selector = '#preview-canvas';
 
-    const photo = await screenshotElement(url, selector);
+    const photo = await this.screenshotService.screenshotElement(url, selector);
 
     return photo;
   }
