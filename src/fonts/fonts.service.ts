@@ -48,6 +48,20 @@ export interface FontIndexData {
 export class FontsService {
   constructor(private readonly db: PrismaService) {}
 
+  // Cache for getAllFonts results
+  private fontsCache: Map<
+    number,
+    {
+      fonts: FontResponse[];
+      nextPage: number | null;
+      hasNextPage: boolean;
+      timestamp: number;
+    }
+  > = new Map();
+
+  // Cache TTL in milliseconds (5 minutes)
+  private readonly CACHE_TTL = 5 * 60 * 1000;
+
   // --- Private Helper Function ---
   private async _fetchAndFormatFonts(params: {
     where: Prisma.FontWhereInput;
@@ -61,25 +75,72 @@ export class FontsService {
   }> {
     const { where, skip, take, page } = params;
 
-    // Fetch total count matching the criteria
-    const totalFontsCount = await this.db.font.count({ where });
-
-    // Fetch the fonts matching the criteria with pagination
-    const fonts = await this.db.font.findMany({
-      where,
-      include: {
-        family: true,
-        category: true,
-        kind: true,
-        variants: true,
+    // Add image URL condition to the where clause
+    const whereWithImages = {
+      ...where,
+      variants: {
+        some: {
+          imageUrl: {
+            not: null,
+          },
+          AND: [
+            {
+              imageUrl: {
+                not: '',
+              },
+            },
+          ],
+        },
       },
-      skip,
-      take,
-      // Consider adding a consistent orderBy here if needed
-      // orderBy: { family: { name: 'asc' } }
-    });
+    };
 
-    // Format the results
+    // Perform these queries in parallel for better performance
+    const [totalFontsCount, fonts] = await Promise.all([
+      // Only count fonts that have variants with images
+      this.db.font.count({
+        where: whereWithImages,
+      }),
+
+      // Optimize the query to only fetch fonts with image URLs in variants
+      this.db.font.findMany({
+        where: whereWithImages,
+        include: {
+          family: {
+            select: {
+              name: true,
+            },
+          },
+          category: {
+            select: {
+              name: true,
+            },
+          },
+          kind: {
+            select: {
+              name: true,
+            },
+          },
+          variants: {
+            select: {
+              name: true,
+              imageUrl: true,
+              weight: true,
+              style: true,
+              fontUrl: true,
+            },
+          },
+        },
+        skip,
+        take,
+        orderBy: {
+          family: {
+            name: 'asc',
+          },
+        },
+      }),
+    ]);
+
+    // Format the results - we've already filtered for fonts with images
     const formattedFonts = this._formatFonts(fonts);
 
     const hasNextPage = skip + formattedFonts.length < totalFontsCount;
@@ -106,31 +167,25 @@ export class FontsService {
       }[];
     })[],
   ): FontResponse[] {
-    // Filter fonts first: only include those with at least one variant having an image URL
-    const fontsWithImages = fonts.filter(
-      (font) =>
-        font.variants &&
-        font.variants.some(
-          (variant) => variant.imageUrl && variant.imageUrl.trim() !== '',
-        ),
-    );
+    // No need to filter since we're already filtering in the query
+    return fonts.map((font) => {
+      const processedVariants = font.variants
+        .filter((variant) => variant.imageUrl && variant.imageUrl.trim() !== '') // Only include variants with images
+        .map((variant) => ({
+          name: variant.name,
+          imageUrl: variant.imageUrl || '', // Ensure empty string if null
+          weight: +variant.weight,
+          style: variant.style,
+          family: font.family.name,
+          url: variant.fontUrl,
+        }));
 
-    // Now map the filtered fonts
-    return fontsWithImages.map((font) => {
-      const processedVariants = font.variants.map((variant) => ({
-        name: variant.name,
-        imageUrl: variant.imageUrl || '', // Ensure empty string if null
-        weight: +variant.weight,
-        style: variant.style,
-        family: font.family.name,
-        url: variant.fontUrl,
-      }));
       return {
         fontId: font.id,
         fontFamily: font.family.name,
         category: font.category.name,
         kind: font.kind.name,
-        variants: processedVariants, // All variants are returned for the matching font
+        variants: processedVariants, // Only include variants with images
       };
     });
   }
@@ -141,15 +196,51 @@ export class FontsService {
     const font = await this.db.font.findUniqueOrThrow({
       where: { id },
       include: {
-        family: true,
-        category: true,
-        kind: true,
-        variants: true,
+        family: {
+          select: {
+            name: true,
+          },
+        },
+        category: {
+          select: {
+            name: true,
+          },
+        },
+        kind: {
+          select: {
+            name: true,
+          },
+        },
+        variants: {
+          select: {
+            name: true,
+            imageUrl: true,
+            weight: true,
+            style: true,
+            fontUrl: true,
+          },
+          where: {
+            AND: [{ imageUrl: { not: null } }, { imageUrl: { not: '' } }],
+          },
+        },
       },
     });
-    // Format the single font using the helper (needs an array)
-    const formatted = this._formatFonts([font]);
-    return formatted[0]; // Return the single formatted font
+
+    // Format the single font
+    return {
+      fontId: font.id,
+      fontFamily: font.family.name,
+      category: font.category.name,
+      kind: font.kind.name,
+      variants: font.variants.map((variant) => ({
+        name: variant.name,
+        imageUrl: variant.imageUrl || '',
+        weight: +variant.weight,
+        style: variant.style,
+        family: font.family.name,
+        url: variant.fontUrl,
+      })),
+    };
   }
   // --- End Get Font By Single ID ---
 
@@ -158,41 +249,147 @@ export class FontsService {
     if (!ids || ids.length === 0) {
       return []; // Return empty array if no IDs provided
     }
+
+    // Add a cache for getFontsByIds to handle repeated requests with the same IDs
+    const cacheKey = ids.sort().join(',');
+    const cachedFonts = this.getFontsByIdsCache.get(cacheKey);
+    if (cachedFonts && Date.now() - cachedFonts.timestamp < this.CACHE_TTL) {
+      return cachedFonts.fonts;
+    }
+
     const fonts = await this.db.font.findMany({
       where: {
         id: {
           in: ids,
         },
+        variants: {
+          some: {
+            imageUrl: {
+              not: null,
+            },
+            AND: [
+              {
+                imageUrl: {
+                  not: '',
+                },
+              },
+            ],
+          },
+        },
       },
       include: {
-        family: true,
-        category: true,
-        kind: true,
-        variants: true,
+        family: {
+          select: {
+            name: true,
+          },
+        },
+        category: {
+          select: {
+            name: true,
+          },
+        },
+        kind: {
+          select: {
+            name: true,
+          },
+        },
+        variants: {
+          select: {
+            name: true,
+            imageUrl: true,
+            weight: true,
+            style: true,
+            fontUrl: true,
+          },
+        },
       },
-      // Optionally add orderBy if needed
+      orderBy: {
+        family: {
+          name: 'asc',
+        },
+      },
     });
-    // Format the results using the existing helper
-    return this._formatFonts(fonts);
+
+    // Format the fonts using our improved formatter
+    const formattedFonts = fonts.map((font) => ({
+      fontId: font.id,
+      fontFamily: font.family.name,
+      category: font.category.name,
+      kind: font.kind.name,
+      variants: font.variants
+        .filter((variant) => variant.imageUrl && variant.imageUrl.trim() !== '')
+        .map((variant) => ({
+          name: variant.name,
+          imageUrl: variant.imageUrl || '',
+          weight: +variant.weight,
+          style: variant.style,
+          family: font.family.name,
+          url: variant.fontUrl,
+        })),
+    }));
+
+    // Cache the results
+    this.getFontsByIdsCache.set(cacheKey, {
+      fonts: formattedFonts,
+      timestamp: Date.now(),
+    });
+
+    return formattedFonts;
   }
   // --- End Get Fonts By List of IDs ---
+
+  // Add a cache for getFontsByIds
+  private getFontsByIdsCache = new Map<
+    string,
+    {
+      fonts: FontResponse[];
+      timestamp: number;
+    }
+  >();
 
   async getAllFonts(page: number): Promise<{
     fonts: FontResponse[];
     nextPage: number | null;
     hasNextPage: boolean;
   }> {
+    // Check if we have a cached result for this page
+    if (this.fontsCache.has(page)) {
+      const cachedResult = this.fontsCache.get(page);
+      // Check if the cache is still valid
+      if (Date.now() - cachedResult.timestamp < this.CACHE_TTL) {
+        return {
+          fonts: cachedResult.fonts,
+          nextPage: cachedResult.nextPage,
+          hasNextPage: cachedResult.hasNextPage,
+        };
+      }
+    }
+
     const pageSize = 30;
     const skipAmount = page ? (page - 1) * pageSize : 0;
     // Fetch all if page is not provided (or handle differently if needed)
     const takeAmount = page ? pageSize : undefined;
 
-    return this._fetchAndFormatFonts({
+    // Perform the database query and formatting
+    const result = await this._fetchAndFormatFonts({
       where: {},
       skip: skipAmount,
       take: takeAmount,
       page: page || 1, // Pass page number
     });
+
+    // Cache the result with a timestamp
+    this.fontsCache.set(page, {
+      ...result,
+      timestamp: Date.now(),
+    });
+
+    return result;
+  }
+
+  // Method to invalidate cache when fonts are updated
+  invalidateFontsCache(): void {
+    this.fontsCache.clear();
   }
 
   // --- Add Helper for Indexing Data ---

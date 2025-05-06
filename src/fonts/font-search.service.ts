@@ -170,12 +170,9 @@ export class FontSearchService implements OnModuleInit {
   }> {
     const { searchQuery, page = 1, limit = 10, filterByCategory } = params;
 
-    // Determine the 'q' parameter for Typesense
-    // If searchQuery is empty/whitespace BUT filterByCategory exists, use '*' for query.
+    // If we have a search query, use it. Otherwise use * to match all
     const effectiveQuery =
-      (!searchQuery || searchQuery.trim() === '') && filterByCategory
-        ? '*'
-        : searchQuery; // Otherwise, use the provided query (which might be empty if no filter either)
+      searchQuery && searchQuery.trim() !== '' ? searchQuery : '*';
 
     // --- Build filter string ---
     const filterConditions: string[] = [];
@@ -191,21 +188,11 @@ export class FontSearchService implements OnModuleInit {
     // Use `any` for search params type if specific import fails
     const searchParameters: any = {
       q: effectiveQuery,
-      query_by: 'fontFamily,category',
+      query_by: 'fontFamily', // Only search by font name, not category
       page: page,
       per_page: limit,
       filter_by: filterByString, // Use combined filter string
     };
-
-    // If effectiveQuery is '*' and there's no filter, it doesn't make sense to search.
-    // The controller should prevent this, but we can add a safeguard.
-    if (effectiveQuery === '*' && !searchParameters.filter_by) {
-      this.logger.warn(
-        "Search attempted with ineffective parameters (q='*')" +
-          ', no filter). Returning empty.',
-      );
-      return { ids: [], totalHits: 0, totalPages: 0, currentPage: page };
-    }
 
     try {
       this.logger.log(

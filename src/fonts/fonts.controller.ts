@@ -79,8 +79,10 @@ export class FontsController {
 
     const fontsFromDb = await this.fontsService.getFontsByIds(searchResult.ids);
 
+    const fontMap = new Map(fontsFromDb.map((font) => [font.fontId, font]));
+
     const orderedFonts = searchResult.ids
-      .map((id) => fontsFromDb.find((font) => font.fontId === id))
+      .map((id) => fontMap.get(id))
       .filter((font) => font !== undefined) as FontResponse[];
 
     return {
