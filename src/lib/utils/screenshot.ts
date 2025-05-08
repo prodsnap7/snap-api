@@ -19,7 +19,12 @@ export class ScreenshotService {
     try {
       page = await this.puppeteerService.getPage();
       console.log('Navigating to URL:', url);
-      await page.goto(url, { waitUntil: 'networkidle0' });
+
+      // Set a reasonable navigation timeout
+      await page.goto(url, {
+        waitUntil: 'networkidle0',
+        timeout: 30000, // 30 seconds timeout
+      });
 
       await page.setViewport({ width: 4000, height: 4000 });
       console.log('Page loaded successfully');
@@ -62,6 +67,20 @@ export class ScreenshotService {
       const screenshotBuffer = await element.screenshot();
       console.log('Screenshot completed');
 
+      // Release the page before processing the buffer to minimize resource usage time
+      if (page) {
+        const pageToRelease = page;
+        page = null; // Set to null so we don't try to release it again in finally block
+        await this.puppeteerService
+          .releasePage(pageToRelease)
+          .catch((err) =>
+            console.error(
+              'Error releasing page after screenshot:',
+              err.message,
+            ),
+          );
+      }
+
       if (screenshotBuffer) {
         console.log('Screenshot taken successfully');
         return Buffer.from(screenshotBuffer);
@@ -73,8 +92,17 @@ export class ScreenshotService {
       console.error('Screenshot error:', error);
       throw error;
     } finally {
+      // Only release the page if it hasn't been released yet
       if (page) {
-        await this.puppeteerService.releasePage(page);
+        try {
+          await this.puppeteerService.releasePage(page);
+        } catch (releaseError) {
+          console.error(
+            'Error in finally block when releasing page:',
+            releaseError.message,
+          );
+          // Don't rethrow this error as it would mask the original error
+        }
       }
     }
   }
