@@ -101,4 +101,23 @@ export class DesignsController {
       throw new BadRequestException('Failed to delete design');
     }
   }
+
+  @Public()
+  @Post('screenshot')
+  async screenshotFromUrl(@Body('url') url: string, @Res() res: FastifyReply) {
+    if (!url) {
+      res.status(400);
+      res.send({ message: 'Missing url in request body' });
+      return;
+    }
+    // Pass the URL directly to the screenshot service
+    const imageBuffer = await this.designsService.screenshotFromUrl(url);
+    if (!imageBuffer) {
+      res.status(404);
+      res.send({ message: 'Unable to take screenshot' });
+      return;
+    }
+    res.header('Content-Type', 'image/jpeg');
+    res.send(imageBuffer);
+  }
 }

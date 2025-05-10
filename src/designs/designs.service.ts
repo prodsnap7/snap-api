@@ -110,4 +110,10 @@ export class DesignsService {
       throw error;
     }
   }
+
+  async screenshotFromUrl(url: string): Promise<Buffer | void> {
+    const selector = '#preview-canvas';
+    const photo = await this.screenshotService.screenshotElement(url, selector);
+    return photo;
+  }
 }
