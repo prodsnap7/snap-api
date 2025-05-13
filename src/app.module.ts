@@ -15,7 +15,8 @@ import { PhotosModule } from './photos/photos.module';
 import { TemplatesModule } from './templates/templates.module';
 import { PuppeteerService } from './lib/utils/puppeteer.service';
 import { ScreenshotService } from './lib/utils/screenshot';
-import { ApiKeyAuthGuard } from './lib/api-key-auth.guard';
+import { ClerkAuthStrategy } from './clerk/clerk-auth.strategy';
+import { ClerkAuthGuard } from './clerk/clerk-auth.guard';
 
 @Module({
   imports: [
@@ -45,9 +46,10 @@ import { ApiKeyAuthGuard } from './lib/api-key-auth.guard';
     FirebaseAuthStrategy,
     PuppeteerService,
     ScreenshotService,
+    ClerkAuthStrategy,
     {
       provide: APP_GUARD,
-      useClass: ApiKeyAuthGuard,
+      useClass: ClerkAuthGuard,
     },
   ],
   exports: [PuppeteerService, ScreenshotService],
