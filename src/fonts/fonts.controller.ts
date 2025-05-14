@@ -9,19 +9,24 @@ import {
   BadRequestException,
   ParseIntPipe,
 } from '@nestjs/common';
-import { FontsService, FontResponse } from './fonts.service';
+import { FontsService } from './fonts.service';
 import { FontSearchService } from './font-search.service';
 import { FastifyReply } from 'fastify';
 import { Public } from 'src/lib/public-modifier';
-import { IsArray, IsInt, ArrayNotEmpty } from 'class-validator';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiQuery,
+  ApiOkResponse,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
+  ApiProduces,
+} from '@nestjs/swagger';
+import { FontDto, FontSearchResultDto } from './dto/font.dto';
+import { GetFontsByIdsDto } from './dto/get-fonts-by-ids.dto';
 
-class GetFontsByIdsDto {
-  @IsArray()
-  @ArrayNotEmpty()
-  @IsInt({ each: true })
-  ids: number[];
-}
-
+@ApiTags('Fonts')
 @Controller('fonts')
 export class FontsController {
   constructor(
@@ -30,23 +35,61 @@ export class FontsController {
   ) {}
 
   @Get()
-  getAllFonts(@Query('page') page?: number) {
+  @ApiOperation({ summary: 'Get all fonts (paginated)' })
+  @ApiQuery({
+    name: 'page',
+    description: 'Page number for pagination',
+    required: false,
+    type: Number,
+  })
+  @ApiOkResponse({
+    description: 'A paginated list of all fonts.',
+    type: [FontDto],
+  })
+  getAllFonts(@Query('page') page?: number): Promise<FontDto[]> {
     const pageNumber = page ? parseInt(page.toString(), 10) : undefined;
-    return this.fontsService.getAllFonts(pageNumber);
+    return this.fontsService.getAllFonts(pageNumber) as any;
   }
 
   @Get('search')
+  @ApiOperation({ summary: 'Search for fonts' })
+  @ApiQuery({
+    name: 'query',
+    description: 'Search query string',
+    required: false,
+    type: String,
+  })
+  @ApiQuery({
+    name: 'page',
+    description: 'Page number for pagination',
+    required: false,
+    type: String,
+    example: '1',
+  })
+  @ApiQuery({
+    name: 'limit',
+    description: 'Number of results per page',
+    required: false,
+    type: String,
+    example: '10',
+  })
+  @ApiQuery({
+    name: 'filterByCategory',
+    description: 'Filter fonts by category',
+    required: false,
+    type: String,
+  })
+  @ApiOkResponse({
+    description: 'Search results for fonts.',
+    type: FontSearchResultDto,
+  })
+  @ApiResponse({ status: 400, description: 'Invalid request parameters.' })
   async searchFonts(
     @Query('query') searchQuery?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('filterByCategory') filterByCategory?: string,
-  ): Promise<{
-    fonts: FontResponse[];
-    totalHits: number;
-    totalPages: number;
-    currentPage: number;
-  }> {
+  ): Promise<FontSearchResultDto> {
     if (!searchQuery && !filterByCategory) {
       throw new BadRequestException(
         'At least one of query or filterByCategory parameter is required',
@@ -78,12 +121,10 @@ export class FontsController {
     }
 
     const fontsFromDb = await this.fontsService.getFontsByIds(searchResult.ids);
-
     const fontMap = new Map(fontsFromDb.map((font) => [font.fontId, font]));
-
     const orderedFonts = searchResult.ids
       .map((id) => fontMap.get(id))
-      .filter((font) => font !== undefined) as FontResponse[];
+      .filter((font) => font !== undefined) as FontDto[];
 
     return {
       fonts: orderedFonts,
@@ -94,17 +135,41 @@ export class FontsController {
   }
 
   @Get(':id')
-  getFontById(@Param('id', ParseIntPipe) id: number) {
-    return this.fontsService.getFontById(id);
+  @ApiOperation({ summary: 'Get a specific font by its ID' })
+  @ApiParam({
+    name: 'id',
+    description: 'ID of the font to retrieve',
+    type: Number,
+  })
+  @ApiOkResponse({ description: 'The font record.', type: FontDto })
+  @ApiResponse({ status: 404, description: 'Font not found.' })
+  getFontById(@Param('id', ParseIntPipe) id: number): Promise<FontDto> {
+    return this.fontsService.getFontById(id) as any;
   }
 
   @Post('batch')
-  getFontsByIds(@Body() getFontsByIdsDto: GetFontsByIdsDto) {
-    return this.fontsService.getFontsByIds(getFontsByIdsDto.ids);
+  @ApiOperation({ summary: 'Get multiple fonts by their IDs' })
+  @ApiBody({ type: GetFontsByIdsDto })
+  @ApiOkResponse({ description: 'A list of requested fonts.', type: [FontDto] })
+  getFontsByIds(
+    @Body() getFontsByIdsDto: GetFontsByIdsDto,
+  ): Promise<FontDto[]> {
+    return this.fontsService.getFontsByIds(getFontsByIdsDto.ids) as any;
   }
 
   @Public()
   @Get('proxy')
+  @ApiOperation({ summary: 'Proxy a font file from Google Fonts' })
+  @ApiQuery({
+    name: 'url',
+    description: 'URL of the Google Font CSS file to proxy',
+    required: true,
+    type: String,
+  })
+  @ApiProduces('text/css')
+  @ApiOkResponse({ description: 'Proxied font data.' })
+  @ApiResponse({ status: 400, description: 'Invalid URL or font source.' })
+  @ApiResponse({ status: 500, description: 'Failed to proxy font.' })
   async proxyFont(@Query('url') url: string, @Res() res: FastifyReply) {
     if (!url) {
       return res.status(400).send('URL query parameter is required');

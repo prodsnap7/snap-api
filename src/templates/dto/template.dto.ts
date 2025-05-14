@@ -1,40 +1,40 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsString,
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  IsArray,
-} from 'class-validator';
 
-export class CreateTemplateDto {
+export class TemplateDto {
+  @ApiProperty({
+    example: 'tmpl_abc123',
+    description: 'Unique identifier for the template',
+  })
+  id: string;
+
   @ApiProperty({
     example: 'My Brochure Template',
     description: 'Name of the template',
   })
-  @IsString()
-  @IsNotEmpty()
   name: string;
+
+  @ApiProperty({
+    example: 'user_xyz789',
+    description: 'Identifier of the user who created the template',
+  })
+  userId: string;
 
   @ApiProperty({
     example: 1200,
     description: 'Width of the template canvas in pixels',
   })
-  @IsNumber()
   canvasWidth: number;
 
   @ApiProperty({
     example: 900,
     description: 'Height of the template canvas in pixels',
   })
-  @IsNumber()
   canvasHeight: number;
 
   @ApiProperty({
     example: '#EFEFEF',
     description: 'Background color or properties of the template',
   })
-  @IsString()
   background: string;
 
   @ApiProperty({
@@ -42,7 +42,6 @@ export class CreateTemplateDto {
     type: 'object',
     additionalProperties: true,
   })
-  @IsNotEmpty()
   elements: any; // Consider a specific DTO if structure is known
 
   @ApiProperty({
@@ -50,7 +49,6 @@ export class CreateTemplateDto {
     type: 'object',
     additionalProperties: true,
   })
-  @IsNotEmpty()
   groups: any; // Consider a specific DTO if structure is known
 
   @ApiProperty({
@@ -58,25 +56,30 @@ export class CreateTemplateDto {
     description: 'List of fonts used in the template',
     type: [String],
   })
-  @IsArray()
-  @IsString({ each: true })
   fonts: string[];
 
   @ApiProperty({
     example: 'https://example.com/thumbnails/template_abc123.jpg',
     description: 'URL of the template thumbnail',
   })
-  @IsString()
-  @IsOptional()
-  thumbnail?: string;
+  thumbnail: string;
 
   @ApiProperty({
     example: ['brochure', 'marketing', 'modern'],
     description: 'Tags associated with the template',
     type: [String],
   })
-  @IsArray()
-  @IsString({ each: true })
-  @IsOptional()
-  tags?: string[];
+  tags: string[];
+
+  @ApiProperty({
+    example: '2023-06-01T10:00:00.000Z',
+    description: 'Timestamp of template creation',
+  })
+  createdAt: Date;
+
+  @ApiProperty({
+    example: 150,
+    description: 'Number of times the template has been used',
+  })
+  useCount: number;
 }
