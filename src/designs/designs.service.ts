@@ -58,18 +58,26 @@ export class DesignsService {
     },
     generateThumbnail: boolean,
   ): Promise<Design> {
-    const { where, data } = params;
-    const res = this.db.design.update({
-      data,
+    const { where, data: updateData } = params;
+
+    const dataToUpdate: Prisma.DesignUpdateInput = {
+      ...updateData,
+      ...(generateThumbnail && { thumbnail_pending: true }),
+    };
+
+    const updatedDesign = await this.db.design.update({
+      data: dataToUpdate,
       where,
     });
 
     if (generateThumbnail) {
-      console.log('Generating thumbnail...');
+      console.log(
+        `Thumbnail regeneration requested for design ${where.id}. Adding to queue.`,
+      );
       await this.designPhotoQueue.add('create-thumbnail', where.id);
     }
 
-    return res;
+    return updatedDesign;
   }
 
   async downloadDesign(id: string): Promise<Buffer | void> {

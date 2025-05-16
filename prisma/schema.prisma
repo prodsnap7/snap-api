@@ -68,7 +68,9 @@ model Design {
   updatedAt    DateTime @updatedAt
   templateId   String?
   template     Template? @relation(fields: [templateId], references: [id])
+  thumbnail_pending Boolean  @default(true)
 
+  @@index([thumbnail_pending])
   @@map("designs")
 }
 

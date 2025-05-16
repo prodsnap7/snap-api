@@ -10,15 +10,16 @@ import { IconsModule } from './icons/icons.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { BullModule } from '@nestjs/bull';
 import { BlocksConsumer } from './blocks/blocks.consumer';
-import { DesignsConsumer } from './designs/designs.consumer';
 import { PhotosModule } from './photos/photos.module';
 import { TemplatesModule } from './templates/templates.module';
 import { PuppeteerService } from './lib/utils/puppeteer.service';
 import { ScreenshotService } from './lib/utils/screenshot';
 import { FirebaseAuthGuard } from './firebase/firebase-auth.guard';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     DesignsModule,
     PrismaModule,
     BlocksModule,
@@ -29,19 +30,21 @@ import { FirebaseAuthGuard } from './firebase/firebase-auth.guard';
     ConfigModule.forRoot({ isGlobal: true }),
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        redis: {
-          host: configService.get('REDIS_HOST'),
-          port: +configService.get('REDIS_PORT'),
-        },
-      }),
+      useFactory: async (configService: ConfigService) => {
+        const redisUrl = configService.get<string>('REDIS_URL');
+        if (!redisUrl) {
+          throw new Error('REDIS_URL is not defined in environment variables');
+        }
+        return {
+          redis: redisUrl,
+        };
+      },
       inject: [ConfigService],
     }),
     PhotosModule,
   ],
   providers: [
     BlocksConsumer,
-    DesignsConsumer,
     FirebaseAuthStrategy,
     PuppeteerService,
     ScreenshotService,
