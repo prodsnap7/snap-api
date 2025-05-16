@@ -6,9 +6,13 @@ import {
   Body,
   Param,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { TemplatesService } from './templates.service';
-import { CreateTemplateDto } from './templates.dto';
+import {
+  CreateTemplateDto,
+  CreateTemplateFromDesignDto,
+} from './templates.dto';
 import { Public } from 'src/lib/public-modifier';
 
 @Controller('templates')
@@ -50,18 +54,24 @@ export class TemplatesController {
     return this.templatesService.delete(id, user.user_id, user.isAdmin);
   }
 
-  @Post(':id/use')
-  async createDesignFromTemplate(@Param('id') templateId: string, @Req() req) {
-    const { user } = req;
-    return this.templatesService.createDesignFromTemplate(
-      templateId,
-      user.user_id,
-    );
-  }
-
   @Public()
   @Get()
   async findAllTemplates() {
     return this.templatesService.findAllTemplates();
+  }
+
+  @Post('/from-design')
+  async createTemplateFromDesign(
+    @Body() createTemplateDto: CreateTemplateFromDesignDto,
+    @Req() req,
+  ) {
+    const { user } = req;
+    if (!user || !user.user_id) {
+      throw new BadRequestException('User not found in request');
+    }
+    return this.templatesService.createTemplateFromDesign(
+      createTemplateDto.designId,
+      user.user_id,
+    );
   }
 }

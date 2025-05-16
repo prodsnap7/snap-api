@@ -102,6 +102,7 @@ export class TemplatesService {
         elements: template.elements,
         fonts: template.fonts,
         groups: template.groups,
+        thumbnail: template.thumbnail,
         templateId: template.id,
       },
     });
@@ -118,6 +119,44 @@ export class TemplatesService {
   async findAllTemplates(): Promise<Template[]> {
     return this.prisma.template.findMany({
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createTemplateFromDesign(
+    designId: string,
+    userId: string,
+  ): Promise<Template> {
+    const design = await this.prisma.design.findUnique({
+      where: { id: designId },
+    });
+
+    if (!design) {
+      throw new NotFoundException(`Design with ID ${designId} not found`);
+    }
+
+    // Optionally, check if the user requesting owns the design, or if it's a public design
+    // For now, assuming any user can create a template from any valid design ID
+    // if (design.userId !== userId) {
+    //   throw new BadRequestException('You can only create templates from your own designs.');
+    // }
+
+    const templateData = {
+      name: `Template from ${design.name || 'Untitled Design'}`,
+      userId: userId, // The user creating the template
+      canvasWidth: design.canvasWidth,
+      canvasHeight: design.canvasHeight,
+      background: design.background,
+      elements: design.elements || '', // Default to empty string if null
+      fonts: design.fonts || [], // Default to empty array if null
+      groups: design.groups || '', // Default to empty string if null
+      thumbnail: design.thumbnail, // Decide if you want to copy or regenerate thumbnail
+      tags: [], // Default to empty tags, or derive from design if applicable
+      useCount: 0,
+      // designId: design.id // Storing the source design ID might be useful for tracking
+    };
+
+    return this.prisma.template.create({
+      data: templateData,
     });
   }
 }

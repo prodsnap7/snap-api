@@ -6,6 +6,7 @@ import { Queue } from 'bull';
 import { DESIGN_PHOTO_QUEUE } from 'src/constants';
 import { ScreenshotService } from 'src/lib/utils/screenshot';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { TemplatesService } from 'src/templates/templates.service';
 import { CloudinaryService } from 'src/uploads/cloudinary.service';
 
 @Injectable()
@@ -16,6 +17,7 @@ export class DesignsService {
     @InjectQueue(DESIGN_PHOTO_QUEUE) private readonly designPhotoQueue: Queue,
     private readonly cloudinaryService: CloudinaryService,
     private readonly screenshotService: ScreenshotService,
+    private readonly templatesService: TemplatesService,
   ) {}
 
   async design(
@@ -115,5 +117,48 @@ export class DesignsService {
     const selector = '#preview-canvas';
     const photo = await this.screenshotService.screenshotElement(url, selector);
     return photo;
+  }
+
+  async duplicateDesign(
+    originalDesignId: string,
+    userId: string,
+  ): Promise<Design> {
+    const originalDesign = await this.db.design.findUniqueOrThrow({
+      where: { id: originalDesignId },
+    });
+
+    // Destructure and ignore specific fields by prefixing them with an underscore
+    const {
+      id: _id,
+      createdAt: _createdAt,
+      updatedAt: _updatedAt,
+      userId: _originalUserId, // Renamed to avoid conflict with the userId parameter
+      templateId: originalTemplateId, // Get the original templateId
+      name,
+      ...restOfDesign
+    } = originalDesign;
+
+    const newDesignData: Prisma.DesignCreateInput = {
+      // Explicitly type for clarity
+      ...restOfDesign,
+      name: `Copy of ${name}`,
+      userId: userId,
+      // Thumbnail will be null initially, or you might want to trigger regeneration
+      // If the original design was linked to a template, connect the new design to the same template.
+      ...(originalTemplateId && {
+        template: { connect: { id: originalTemplateId } },
+      }),
+    };
+
+    return this.db.design.create({
+      data: newDesignData,
+    });
+  }
+
+  async createDesignFromTemplate(
+    templateId: string,
+    userId: string,
+  ): Promise<{ id: string }> {
+    return this.templatesService.createDesignFromTemplate(templateId, userId);
   }
 }

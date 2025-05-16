@@ -1,3 +1,5 @@
+import { IsNotEmpty, IsString } from 'class-validator';
+
 export class CreateDesignDTO {
   id?: string;
   name: string;
@@ -9,4 +11,10 @@ export class CreateDesignDTO {
   groups: any;
   fonts?: string[];
   thumbnail?: string;
+}
+
+export class CreateDesignFromTemplateDto {
+  @IsString()
+  @IsNotEmpty()
+  templateId: string;
 }

@@ -1,3 +1,5 @@
+import { IsNotEmpty, IsString } from 'class-validator';
+
 export class CreateTemplateDto {
   name: string;
   canvasWidth: number;
@@ -8,6 +10,12 @@ export class CreateTemplateDto {
   fonts?: string[];
   thumbnail?: string;
   tags: string[];
+}
+
+export class CreateTemplateFromDesignDto {
+  @IsString()
+  @IsNotEmpty()
+  designId: string;
 }
 
 export class TemplateResponseDto {

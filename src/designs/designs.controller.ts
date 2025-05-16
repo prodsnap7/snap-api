@@ -14,7 +14,7 @@ import {
 import { FastifyReply } from 'fastify';
 import { Design as DesignModel } from '@prisma/client';
 import { DesignsService } from './designs.service';
-import { CreateDesignDTO } from './designs.dto';
+import { CreateDesignDTO, CreateDesignFromTemplateDto } from './designs.dto';
 import { Public } from 'src/lib/public-modifier';
 
 @Controller('designs')
@@ -119,5 +119,36 @@ export class DesignsController {
     }
     res.header('Content-Type', 'image/jpeg');
     res.send(imageBuffer);
+  }
+
+  @Post(':id/duplicate')
+  async duplicateDesign(
+    @Param('id') id: string,
+    @Req() req,
+  ): Promise<DesignModel> {
+    const { user } = req;
+    if (!user || !user.user_id) {
+      throw new BadRequestException(
+        'User information is missing from the request.',
+      );
+    }
+    return this.designsService.duplicateDesign(id, user.user_id);
+  }
+
+  @Post('from-template')
+  async createDesignFromTemplate(
+    @Body() createDesignDto: CreateDesignFromTemplateDto,
+    @Req() req,
+  ): Promise<{ id: string }> {
+    const { user } = req;
+    if (!user || !user.user_id) {
+      throw new BadRequestException(
+        'User information is missing from the request.',
+      );
+    }
+    return this.designsService.createDesignFromTemplate(
+      createDesignDto.templateId,
+      user.user_id,
+    );
   }
 }

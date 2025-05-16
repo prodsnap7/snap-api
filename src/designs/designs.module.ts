@@ -8,10 +8,16 @@ import { UploadsModule } from 'src/uploads/uploads.module';
 import { TemplatesModule } from 'src/templates/templates.module';
 import { PuppeteerService } from 'src/lib/utils/puppeteer.service';
 import { ScreenshotService } from 'src/lib/utils/screenshot';
+import { DesignsConsumer } from './designs.consumer';
 
 @Module({
   controllers: [DesignsController],
-  providers: [DesignsService, PuppeteerService, ScreenshotService],
+  providers: [
+    DesignsService,
+    PuppeteerService,
+    ScreenshotService,
+    DesignsConsumer,
+  ],
   imports: [
     PrismaModule,
     UploadsModule,
