@@ -68,14 +68,6 @@ export class ScreenshotService {
       const screenshotBuffer = await element.screenshot({ type: 'png' });
       console.log('Screenshot completed');
 
-      console.log('Current working directory:', process.cwd());
-      if (screenshotBuffer) {
-        console.log('Writing screenshot to disk...');
-        fs.writeFileSync('test-screenshot.png', screenshotBuffer);
-      } else {
-        console.log('Screenshot buffer is empty or null');
-      }
-
       // Release the page before processing the buffer to minimize resource usage time
       if (page) {
         const pageToRelease = page;
