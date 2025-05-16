@@ -9,6 +9,7 @@ import { TemplatesModule } from 'src/templates/templates.module';
 import { PuppeteerService } from 'src/lib/utils/puppeteer.service';
 import { ScreenshotService } from 'src/lib/utils/screenshot';
 import { DesignsConsumer } from './designs.consumer';
+import { DesignMaintenanceService } from './design-maintenance.service';
 
 @Module({
   controllers: [DesignsController],
@@ -17,6 +18,7 @@ import { DesignsConsumer } from './designs.consumer';
     PuppeteerService,
     ScreenshotService,
     DesignsConsumer,
+    DesignMaintenanceService,
   ],
   imports: [
     PrismaModule,
