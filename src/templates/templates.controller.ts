@@ -14,15 +14,24 @@ import {
   CreateTemplateFromDesignDto,
 } from './templates.dto';
 import { Public } from 'src/lib/public-modifier';
+import { User } from '@clerk/backend';
+import { FastifyRequest } from 'fastify';
+
+interface RequestWithClerkUser extends FastifyRequest {
+  user: User;
+}
 
 @Controller('templates')
 export class TemplatesController {
   constructor(private readonly templatesService: TemplatesService) {}
 
   @Post()
-  async createTemplate(@Req() req, @Body() data: CreateTemplateDto) {
+  async createTemplate(
+    @Req() req: RequestWithClerkUser,
+    @Body() data: CreateTemplateDto,
+  ) {
     const { user } = req;
-    return this.templatesService.create(user.user_id, data);
+    return this.templatesService.create(user.id, data);
   }
 
   // @Public()
@@ -49,9 +58,11 @@ export class TemplatesController {
   }
 
   @Delete(':id')
-  async delete(@Param('id') id: string, @Req() req) {
+  async delete(@Param('id') id: string, @Req() req: RequestWithClerkUser) {
     const { user } = req;
-    return this.templatesService.delete(id, user.user_id, user.isAdmin);
+    const isAdmin =
+      (user.publicMetadata as { isAdmin?: boolean })?.isAdmin || false;
+    return this.templatesService.delete(id, user.id, isAdmin);
   }
 
   @Public()
@@ -63,15 +74,15 @@ export class TemplatesController {
   @Post('/from-design')
   async createTemplateFromDesign(
     @Body() createTemplateDto: CreateTemplateFromDesignDto,
-    @Req() req,
+    @Req() req: RequestWithClerkUser,
   ) {
     const { user } = req;
-    if (!user || !user.user_id) {
+    if (!user || !user.id) {
       throw new BadRequestException('User not found in request');
     }
     return this.templatesService.createTemplateFromDesign(
       createTemplateDto.designId,
-      user.user_id,
+      user.id,
     );
   }
 }

@@ -3,7 +3,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Module } from '@nestjs/common';
 import { DesignsModule } from './designs/designs.module';
 import { PrismaModule } from './prisma/prisma.module';
-import { FirebaseAuthStrategy } from './firebase/firebase-auth.strategy';
 import { BlocksModule } from './blocks/blocks.module';
 import { FontsModule } from './fonts/fonts.module';
 import { IconsModule } from './icons/icons.module';
@@ -14,8 +13,11 @@ import { PhotosModule } from './photos/photos.module';
 import { TemplatesModule } from './templates/templates.module';
 import { PuppeteerService } from './lib/utils/puppeteer.service';
 import { ScreenshotService } from './lib/utils/screenshot';
-import { FirebaseAuthGuard } from './firebase/firebase-auth.guard';
 import { ScheduleModule } from '@nestjs/schedule';
+import { AuthModule } from './auth/auth.module';
+import { ClerkClientProvider } from './providers/clerk-client.provider';
+import { ClerkAuthGuard } from './auth/clerk-auth.guard';
+import { RolesGuard } from './auth/roles.guard';
 
 @Module({
   imports: [
@@ -42,15 +44,20 @@ import { ScheduleModule } from '@nestjs/schedule';
       inject: [ConfigService],
     }),
     PhotosModule,
+    AuthModule,
   ],
   providers: [
     BlocksConsumer,
-    FirebaseAuthStrategy,
     PuppeteerService,
     ScreenshotService,
+    ClerkClientProvider,
     {
       provide: APP_GUARD,
-      useClass: FirebaseAuthGuard,
+      useClass: ClerkAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
   exports: [PuppeteerService, ScreenshotService],

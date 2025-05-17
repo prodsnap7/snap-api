@@ -12,6 +12,12 @@ import { shortId, ensureHttps } from 'src/lib/utils';
 import { UploadsService } from './uploads.service';
 import { CloudinaryService } from './cloudinary.service';
 import { ImageTransformService } from './image-transform.service';
+import { User } from '@clerk/backend';
+import { FastifyRequest } from 'fastify';
+
+interface RequestWithClerkUser extends FastifyRequest {
+  user: User;
+}
 
 @Controller('uploads')
 export class UploadsController {
@@ -22,11 +28,11 @@ export class UploadsController {
   ) {}
 
   @Get()
-  async findAll(@Req() req) {
+  async findAll(@Req() req: RequestWithClerkUser) {
     const { user } = req;
     return this.uploadsService.findAll({
       where: {
-        userId: user.user_id,
+        userId: user.id,
       },
     });
   }
@@ -37,16 +43,15 @@ export class UploadsController {
   }
 
   @Post()
-  async uploadPhoto(@Req() req) {
+  async uploadPhoto(@Req() req: RequestWithClerkUser) {
     const data = await req.file();
     const { user } = req;
     const fileNameWithoutExt = data.filename.split('.')[0];
     const id = shortId();
-    const userId = user.user_id;
+    const userId = user.id;
 
     const public_id = `prodsnap-uploads/${userId}/${id}-${fileNameWithoutExt}`;
 
-    // const { url } = await streamUpload(fastify, data.file, public_id);
     const { url } = await this.cloudinaryService.uploadPhotoFromStream(
       data.file,
       public_id,
@@ -62,19 +67,9 @@ export class UploadsController {
   }
 
   @Post('remove-bg')
-  async removeBackground(@Req() req, @Body() data) {
+  async removeBackground(@Req() req: RequestWithClerkUser, @Body() data) {
     const { user } = req;
-    const userId = user.user_id;
-    // const existingUpload = await this.uploadsService.findOne({
-    //   userId,
-    //   url: data.url,
-    // });
-
-    // if (existingUpload.backgroundRemoved) {
-    //   return existingUpload;
-    // }
-
-    // if the upload doesn't exist, create it
+    const userId = user.id;
     const photo = await this.imgTransformService.removeBackground(data.url);
     const filename = shortId();
     const public_id = `prodsnap-uploads/${userId}/` + filename;
@@ -94,31 +89,24 @@ export class UploadsController {
   }
 
   @Post('screenshot')
-  async uploadScreenshot(@Req() req) {
+  async uploadScreenshot(@Req() req: RequestWithClerkUser) {
     const data = await req.file();
     const { user } = req;
-    const designId = req.query.designId;
+    const designId = (req.query as { designId?: string }).designId;
 
     if (!designId) {
       throw new BadRequestException('Design ID is required');
     }
 
-    const userId = user.user_id;
-
-    // Create a consistent public_id for this design's screenshot
+    const userId = user.id;
     const public_id = `prodsnap-screenshots/${userId}/${designId}-screenshot`;
 
     try {
-      // Try to delete existing screenshot if it exists
       await this.cloudinaryService.deletePhoto(public_id);
-
-      // Upload new screenshot
       const { url } = await this.cloudinaryService.uploadPhotoFromStream(
         data.file,
         public_id,
       );
-
-      // Return the HTTPS URL
       return { url: ensureHttps(url) };
     } catch (error) {
       console.error('Error handling screenshot:', error);
@@ -127,27 +115,24 @@ export class UploadsController {
   }
 
   @Delete(':id')
-  async deleteUpload(@Param('id') id: string, @Req() req) {
+  async deleteUpload(
+    @Param('id') id: string,
+    @Req() req: RequestWithClerkUser,
+  ) {
     const { user } = req;
-
-    // Get the upload to check ownership and get publicId
     const upload = await this.uploadsService.findOne({ id: Number(id) });
 
     if (!upload) {
       throw new BadRequestException('Upload not found');
     }
 
-    if (upload.userId !== user.user_id) {
+    if (upload.userId !== user.id) {
       throw new BadRequestException('Not authorized to delete this upload');
     }
 
     try {
-      // Delete from Cloudinary first
       await this.cloudinaryService.deletePhoto(upload.publicId);
-
-      // Then delete from database
       await this.uploadsService.remove(Number(id));
-
       return { success: true };
     } catch (error) {
       console.error('Error deleting upload:', error);

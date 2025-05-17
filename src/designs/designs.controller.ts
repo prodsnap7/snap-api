@@ -11,11 +11,17 @@ import {
   Res,
   BadRequestException,
 } from '@nestjs/common';
-import { FastifyReply } from 'fastify';
+import { FastifyReply, FastifyRequest } from 'fastify';
 import { Design as DesignModel } from '@prisma/client';
 import { DesignsService } from './designs.service';
 import { CreateDesignDTO, CreateDesignFromTemplateDto } from './designs.dto';
 import { Public } from 'src/lib/public-modifier';
+import { User } from '@clerk/backend';
+import { Admin } from 'src/decorators/admin.decorator';
+
+interface RequestWithClerkUser extends FastifyRequest {
+  user: User;
+}
 
 @Controller('designs')
 export class DesignsController {
@@ -28,20 +34,29 @@ export class DesignsController {
   }
 
   @Get()
-  async getDesignsByUserId(@Req() req): Promise<DesignModel[]> {
+  async getDesignsByUserId(
+    @Req() req: RequestWithClerkUser,
+  ): Promise<DesignModel[]> {
     const { user } = req;
-    return this.designsService.designs({ where: { userId: user.user_id } });
+    console.log('User from getDesignsByUserId:', user);
+    return this.designsService.designs({ where: { userId: user.id } });
+  }
+
+  @Admin()
+  @Get('all')
+  async getAllDesigns(): Promise<DesignModel[]> {
+    return this.designsService.designs({});
   }
 
   @Post()
   async createDesign(
-    @Req() req,
+    @Req() req: RequestWithClerkUser,
     @Body() createDesignDTO: CreateDesignDTO,
   ): Promise<DesignModel> {
     const { user } = req;
     const data = {
       ...createDesignDTO,
-      userId: user.user_id,
+      userId: user.id,
     };
     return this.designsService.createDesign(data);
   }
@@ -49,15 +64,16 @@ export class DesignsController {
   @Put(':id')
   async updateDesign(
     @Param('id') id: string,
-    @Query('generateThumbnail') generateThumbnail: boolean = false,
+    @Query('generateThumbnail') generateThumbnail: string,
     @Body() updateDesign: Partial<CreateDesignDTO>,
   ): Promise<DesignModel> {
+    const shouldGenerateThumbnail = generateThumbnail === 'true';
     return this.designsService.updateDesign(
       {
         where: { id },
         data: updateDesign,
       },
-      generateThumbnail,
+      shouldGenerateThumbnail,
     );
   }
 
@@ -78,7 +94,10 @@ export class DesignsController {
   }
 
   @Delete(':id')
-  async deleteDesign(@Param('id') id: string, @Req() req) {
+  async deleteDesign(
+    @Param('id') id: string,
+    @Req() req: RequestWithClerkUser,
+  ) {
     const { user } = req;
 
     // Get the design to check ownership
@@ -88,7 +107,7 @@ export class DesignsController {
       throw new BadRequestException('Design not found');
     }
 
-    if (design.userId !== user.user_id) {
+    if (design.userId !== user.id) {
       throw new BadRequestException('Not authorized to delete this design');
     }
 
@@ -124,31 +143,31 @@ export class DesignsController {
   @Post(':id/duplicate')
   async duplicateDesign(
     @Param('id') id: string,
-    @Req() req,
+    @Req() req: RequestWithClerkUser,
   ): Promise<DesignModel> {
     const { user } = req;
-    if (!user || !user.user_id) {
+    if (!user || !user.id) {
       throw new BadRequestException(
         'User information is missing from the request.',
       );
     }
-    return this.designsService.duplicateDesign(id, user.user_id);
+    return this.designsService.duplicateDesign(id, user.id);
   }
 
   @Post('from-template')
   async createDesignFromTemplate(
     @Body() createDesignDto: CreateDesignFromTemplateDto,
-    @Req() req,
+    @Req() req: RequestWithClerkUser,
   ): Promise<{ id: string }> {
     const { user } = req;
-    if (!user || !user.user_id) {
+    if (!user || !user.id) {
       throw new BadRequestException(
         'User information is missing from the request.',
       );
     }
     return this.designsService.createDesignFromTemplate(
       createDesignDto.templateId,
-      user.user_id,
+      user.id,
     );
   }
 }

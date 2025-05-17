@@ -12,18 +12,27 @@ import { BlocksService } from './blocks.service';
 import { CreateBlockDto } from './dto/create-block.dto';
 import { UpdateBlockDto } from './dto/update-block.dto';
 import { Public } from 'src/lib/public-modifier';
+import { User } from '@clerk/backend';
+import { FastifyRequest } from 'fastify';
+
+interface RequestWithClerkUser extends FastifyRequest {
+  user: User;
+}
 
 @Controller('blocks')
 export class BlocksController {
   constructor(private readonly blocksService: BlocksService) {}
 
   @Post()
-  create(@Req() req, @Body() createBlockDto: CreateBlockDto) {
+  create(
+    @Req() req: RequestWithClerkUser,
+    @Body() createBlockDto: CreateBlockDto,
+  ) {
     const { user } = req;
     const { categoryId, ...rest } = createBlockDto;
     const data = {
       ...rest,
-      userId: user.user_id,
+      userId: user.id,
       url: '',
       category: {
         connect: {
@@ -53,12 +62,12 @@ export class BlocksController {
   }
 
   @Get(':id/update-photo')
-  updatePhoto(@Param('id') id: string) {
+  updatePhoto(@Param('id') id: string, @Req() req: RequestWithClerkUser) {
     return this.blocksService.updatePhoto(id);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: string, @Req() req: RequestWithClerkUser) {
     return this.blocksService.remove(id);
   }
 }
