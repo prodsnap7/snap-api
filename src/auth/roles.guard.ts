@@ -21,25 +21,47 @@ export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
+    const req = context.switchToHttp().getRequest();
+    const handler = context.getHandler();
+    const controller = context.getClass();
+
+    // Log information about the request being processed
+    this.logger.debug(`
+      Roles Guard Processing: ${req.method} ${req.url}
+      Controller: ${controller.name}
+      Handler: ${handler.name}
+      Route: ${req.routerPath || 'Unknown'}
+    `);
+
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
+      handler,
+      controller,
     ]);
 
     // If the route is public, RolesGuard doesn't apply, let it pass
     if (isPublic) {
+      this.logger.debug(
+        `Skipping roles check - Public route: ${req.method} ${req.url}`,
+      );
       return true;
     }
 
     const isAdminRoute = this.reflector.getAllAndOverride<boolean>(
       IS_ADMIN_KEY,
-      [context.getHandler(), context.getClass()],
+      [handler, controller],
     );
 
     // If the route is not marked with @Admin(), this guard doesn't apply restrictions beyond ClerkAuthGuard
     if (!isAdminRoute) {
+      this.logger.debug(
+        `Route is not admin-protected: ${req.method} ${req.url}`,
+      );
       return true;
     }
+
+    this.logger.debug(
+      `Admin-protected route detected: ${req.method} ${req.url}`,
+    );
 
     const request = context
       .switchToHttp()
@@ -50,7 +72,7 @@ export class RolesGuard implements CanActivate {
       // This should ideally not happen if ClerkAuthGuard ran successfully before this guard
       // and the route is not public.
       this.logger.warn(
-        'User object not found on request for an admin-protected route.',
+        `User object not found on request for an admin-protected route: ${req.method} ${req.url}`,
       );
       throw new ForbiddenException('Access Denied: User not authenticated.');
     }
@@ -62,11 +84,14 @@ export class RolesGuard implements CanActivate {
     );
 
     if (role === 'admin') {
+      this.logger.debug(
+        `Access granted to admin user ${user.id} for route: ${req.method} ${req.url}`,
+      );
       return true;
     }
 
     this.logger.warn(
-      `Access denied for user ${user.id}. Role '${role}' is not 'admin'.`,
+      `Access denied for user ${user.id}. Role '${role}' is not 'admin'. Route: ${req.method} ${req.url}`,
     );
     throw new ForbiddenException('Access Denied: Requires admin privileges.');
   }

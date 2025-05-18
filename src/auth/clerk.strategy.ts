@@ -23,6 +23,15 @@ export class ClerkStrategy extends PassportStrategy(Strategy, 'clerk') {
   }
 
   async validate(req: FastifyRequest): Promise<User> {
+    // Log request details
+    this.logger.debug(`
+      Request: ${req.method} ${req.url}
+      Route: ${req.routerPath || 'Unknown'}
+      Headers: ${JSON.stringify(this.sanitizeHeaders(req.headers))}
+      Query: ${JSON.stringify(req.query)}
+      Body: ${this.truncateBody(req.body)}
+    `);
+
     const token = req.headers.authorization?.split(' ').pop();
 
     if (!token) {
@@ -64,6 +73,33 @@ export class ClerkStrategy extends PassportStrategy(Strategy, 'clerk') {
         this.logger.error(`Clerk API errors: ${JSON.stringify(error.errors)}`);
       }
       throw new UnauthorizedException('Invalid token or user not found.');
+    }
+  }
+
+  // Sanitize headers to avoid logging sensitive information
+  private sanitizeHeaders(headers: any): any {
+    const sanitized = { ...headers };
+    if (sanitized.authorization) {
+      sanitized.authorization = 'Bearer [REDACTED]';
+    }
+    if (sanitized.cookie) {
+      sanitized.cookie = '[REDACTED]';
+    }
+    return sanitized;
+  }
+
+  // Truncate request body for logging
+  private truncateBody(body: any): string {
+    if (!body) return 'undefined';
+
+    try {
+      const bodyStr = JSON.stringify(body);
+      if (bodyStr.length > 500) {
+        return bodyStr.substring(0, 500) + '... [truncated]';
+      }
+      return bodyStr;
+    } catch (e) {
+      return '[Body cannot be stringified]';
     }
   }
 }

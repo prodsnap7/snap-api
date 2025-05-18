@@ -1,6 +1,7 @@
 import { Controller, Get, Query, Res } from '@nestjs/common';
 import { PhotosService } from './photos.service';
 import { FastifyReply } from 'fastify';
+import { Public } from 'src/lib/public-modifier';
 
 @Controller('photos')
 export class PhotosController {
@@ -11,6 +12,7 @@ export class PhotosController {
     return this.photosService.searchPhotos(query);
   }
 
+  @Public()
   @Get('proxy')
   async proxyPhoto(@Query('url') url: string, @Res() res: FastifyReply) {
     if (!url) {
