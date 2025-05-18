@@ -126,3 +126,14 @@ model Template {
   @@index([tags])
   @@map("templates")
 }
+
+model SvgIcon {
+  id         String   @id @default(uuid())
+  query      String
+  page       Int
+  iconData   Json
+  createdAt  DateTime @default(now())
+  
+  @@unique([query, page])
+  @@map("svg_icons")
+}

@@ -18,6 +18,7 @@ import { AuthModule } from './auth/auth.module';
 import { ClerkClientProvider } from './providers/clerk-client.provider';
 import { ClerkAuthGuard } from './auth/clerk-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
+import { IconsApiModule } from './icons-api/icons-api.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { RolesGuard } from './auth/roles.guard';
     TemplatesModule,
     FontsModule,
     IconsModule,
+    IconsApiModule,
     ConfigModule.forRoot({ isGlobal: true }),
     BullModule.forRootAsync({
       imports: [ConfigModule],

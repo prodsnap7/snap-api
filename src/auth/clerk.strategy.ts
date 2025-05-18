@@ -29,7 +29,6 @@ export class ClerkStrategy extends PassportStrategy(Strategy, 'clerk') {
       Route: ${req.routerPath || 'Unknown'}
       Headers: ${JSON.stringify(this.sanitizeHeaders(req.headers))}
       Query: ${JSON.stringify(req.query)}
-      Body: ${this.truncateBody(req.body)}
     `);
 
     const token = req.headers.authorization?.split(' ').pop();
