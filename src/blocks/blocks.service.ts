@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { UpdateBlockDto } from './dto/update-block.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { BlockCategoryModel, BlockModel } from './entities/block.entity';
@@ -9,6 +9,8 @@ import { Queue } from 'bull';
 
 @Injectable()
 export class BlocksService {
+  private readonly logger = new Logger(BlocksService.name);
+
   constructor(
     private readonly db: PrismaService,
     @InjectQueue(BLOCK_PHOTO_QUEUE) private readonly blockPhotoQueue: Queue,
@@ -19,7 +21,12 @@ export class BlocksService {
       data,
     });
 
-    await this.blockPhotoQueue.add('create-photo', block.id);
+    await this.blockPhotoQueue.add('create-photo', block.id, {
+      jobId: `create_photo_${block.id}`,
+      removeOnComplete: true,
+      removeOnFail: 1000,
+    });
+    this.logger.log(`Job added to queue for block ${block.id}`);
 
     return block;
   }
@@ -51,7 +58,12 @@ export class BlocksService {
   }
 
   async updatePhoto(blockId: string) {
-    await this.blockPhotoQueue.add('create-photo', blockId);
+    await this.blockPhotoQueue.add('create-photo', blockId, {
+      jobId: `create_photo_${blockId}`,
+      removeOnComplete: true,
+      removeOnFail: 1000,
+    });
+    this.logger.log(`Photo update job added to queue for block ${blockId}`);
     return { message: 'Photo update queued' };
   }
 

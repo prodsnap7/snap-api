@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bull';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, Design } from '@prisma/client';
 import { Queue } from 'bull';
@@ -11,6 +11,8 @@ import { CloudinaryService } from 'src/uploads/cloudinary.service';
 
 @Injectable()
 export class DesignsService {
+  private readonly logger = new Logger(DesignsService.name);
+
   constructor(
     private db: PrismaService,
     private readonly configService: ConfigService,
@@ -71,10 +73,19 @@ export class DesignsService {
     });
 
     if (generateThumbnail) {
-      console.log(
+      this.logger.log(
         `Thumbnail regeneration requested for design ${where.id}. Adding to queue.`,
       );
-      await this.designPhotoQueue.add('create-thumbnail', where.id);
+
+      // Use jobId to ensure only one job exists in the queue for this design
+      // If a new job with the same jobId is added, it will replace the old one
+      await this.designPhotoQueue.add('create-thumbnail', where.id, {
+        jobId: `create_thumbnail_${where.id}`,
+        removeOnComplete: true,
+        removeOnFail: 1000,
+      });
+
+      this.logger.log(`Job added to queue for design ${where.id}`);
     }
 
     return updatedDesign;
