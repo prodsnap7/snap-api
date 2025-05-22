@@ -62,33 +62,46 @@ export class DesignsService {
   ): Promise<Design> {
     const { where, data: updateData } = params;
 
+    // Check if the design exists first
+    const existingDesign = await this.db.design.findUnique({ where });
+    if (!existingDesign) {
+      throw new NotFoundException(`Design with ID ${where.id} not found`);
+    }
+
     const dataToUpdate: Prisma.DesignUpdateInput = {
       ...updateData,
       ...(generateThumbnail && { thumbnail_pending: true }),
     };
 
-    const updatedDesign = await this.db.design.update({
-      data: dataToUpdate,
-      where,
-    });
-
-    if (generateThumbnail) {
-      this.logger.log(
-        `Thumbnail regeneration requested for design ${where.id}. Adding to queue.`,
-      );
-
-      // Use jobId to ensure only one job exists in the queue for this design
-      // If a new job with the same jobId is added, it will replace the old one
-      await this.designPhotoQueue.add('create-thumbnail', where.id, {
-        jobId: `create_thumbnail_${where.id}`,
-        removeOnComplete: true,
-        removeOnFail: 1000,
+    try {
+      const updatedDesign = await this.db.design.update({
+        data: dataToUpdate,
+        where,
       });
 
-      this.logger.log(`Job added to queue for design ${where.id}`);
-    }
+      if (generateThumbnail) {
+        this.logger.log(
+          `Thumbnail regeneration requested for design ${where.id}. Adding to queue.`,
+        );
+        // Use jobId to ensure only one job exists in the queue for this design
+        await this.designPhotoQueue.add('create-thumbnail', where.id, {
+          jobId: `create_thumbnail_${where.id}`,
+          removeOnComplete: true,
+          removeOnFail: 1000,
+        });
+        this.logger.log(`Job added to queue for design ${where.id}`);
+      }
 
-    return updatedDesign;
+      return updatedDesign;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException(`Design with ID ${where.id} not found`);
+      }
+      throw error;
+    }
   }
 
   async downloadDesign(id: string): Promise<Buffer | void> {

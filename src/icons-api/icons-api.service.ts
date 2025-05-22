@@ -47,7 +47,7 @@ export class IconsApiService {
 
       const response = await lastValueFrom(
         this.httpService.get(
-          `https://api.freepik.com/v1/icons?page=${page}&per_page=100&term=${searchQuery}&filters%5Bcolor%5D=multicolor`,
+          `https://api.freepik.com/v1/icons?page=${page}&per_page=100&term=${searchQuery}`,
           {
             headers: {
               'x-freepik-api-key': freepikApiKey,

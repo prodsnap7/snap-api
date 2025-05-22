@@ -137,3 +137,13 @@ model SvgIcon {
   @@unique([query, page])
   @@map("svg_icons")
 }
+
+model NounIconCache {
+  id        String   @id @default(uuid())
+  query     String
+  iconData  Json
+  createdAt DateTime @default(now())
+
+  @@unique([query])
+  @@map("noun_icon_cache")
+}
