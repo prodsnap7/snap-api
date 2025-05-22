@@ -15,13 +15,20 @@ export class IconsApiService {
     private readonly httpService: HttpService,
   ) {}
 
-  async searchIcons(searchQuery: string, page: number): Promise<any> {
+  async searchIcons(
+    searchQuery: string,
+    page: number,
+    color?: string,
+    shape?: string,
+  ): Promise<any> {
     try {
+      // Compose a cache key based on all params
+      const cacheKey = `${searchQuery}|${page}|${color || ''}|${shape || ''}`;
       // Step 1: Check for cached data in database
       const cachedData = await this.prisma.svgIcon.findFirst({
         where: {
-          query: searchQuery,
-          page: page,
+          query: cacheKey,
+          page: 1, // always 1 for this cacheKey pattern
         },
       });
 
@@ -32,9 +39,7 @@ export class IconsApiService {
           this.cacheExpirationMs;
 
       if (isCacheValid) {
-        this.logger.log(
-          `Returning cached data for query: ${searchQuery}, page: ${page}`,
-        );
+        this.logger.log(`Returning cached data for key: ${cacheKey}`);
         return cachedData.iconData;
       }
 
@@ -45,15 +50,19 @@ export class IconsApiService {
         throw new Error('FREEPIK_API_KEY is not configured.');
       }
 
+      // Build the Freepik API URL
+      let url = `https://api.freepik.com/v1/icons?order=relevance&term=${encodeURIComponent(searchQuery)}&page=${page}`;
+      if (color) url += `&filters%5Bcolor%5D=${encodeURIComponent(color)}`;
+      if (shape) url += `&filters%5Bshape%5D=${encodeURIComponent(shape)}`;
+
+      console.log('url', url);
+
       const response = await lastValueFrom(
-        this.httpService.get(
-          `https://api.freepik.com/v1/icons?page=${page}&per_page=100&term=${searchQuery}`,
-          {
-            headers: {
-              'x-freepik-api-key': freepikApiKey,
-            },
+        this.httpService.get(url, {
+          headers: {
+            'x-freepik-api-key': freepikApiKey,
           },
-        ),
+        }),
       );
 
       const icons = response.data.data;
@@ -62,8 +71,8 @@ export class IconsApiService {
       await this.prisma.svgIcon.upsert({
         where: {
           query_page: {
-            query: searchQuery,
-            page: page,
+            query: cacheKey,
+            page: 1,
           },
         },
         update: {
@@ -71,8 +80,8 @@ export class IconsApiService {
           createdAt: new Date(),
         },
         create: {
-          query: searchQuery,
-          page: page,
+          query: cacheKey,
+          page: 1,
           iconData: icons,
         },
       });

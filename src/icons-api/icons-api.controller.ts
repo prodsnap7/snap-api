@@ -10,12 +10,24 @@ export class IconsApiController {
 
   @Public() // Make this endpoint public (no authentication required)
   @Get('search')
-  async searchIcons(@Query('q') query = '', @Query('page') pageStr = '1') {
+  async searchIcons(
+    @Query('q') query = '',
+    @Query('page') pageStr = '1',
+    @Query('color') color?: string,
+    @Query('shape') shape?: string,
+  ) {
     try {
       const page = Number(pageStr);
-      this.logger.log(`Searching icons with query: "${query}", page: ${page}`);
+      this.logger.log(
+        `Searching icons with query: "${query}", page: ${page}, color: ${color}, shape: ${shape}`,
+      );
 
-      const icons = await this.iconsApiService.searchIcons(query, page);
+      const icons = await this.iconsApiService.searchIcons(
+        query,
+        page,
+        color,
+        shape,
+      );
 
       return icons;
     } catch (error) {
