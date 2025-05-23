@@ -38,7 +38,6 @@ export class DesignsController {
     @Req() req: RequestWithClerkUser,
   ): Promise<DesignModel[]> {
     const { user } = req;
-    console.log('User from getDesignsByUserId:', user);
     return this.designsService.designs({ where: { userId: user.id } });
   }
 

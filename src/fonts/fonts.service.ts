@@ -310,23 +310,8 @@ export class FontsService {
       },
     });
 
-    // Format the fonts using our improved formatter
-    const formattedFonts = fonts.map((font) => ({
-      fontId: font.id,
-      fontFamily: font.family.name,
-      category: font.category.name,
-      kind: font.kind.name,
-      variants: font.variants
-        .filter((variant) => variant.imageUrl && variant.imageUrl.trim() !== '')
-        .map((variant) => ({
-          name: variant.name,
-          imageUrl: variant.imageUrl || '',
-          weight: +variant.weight,
-          style: variant.style,
-          family: font.family.name,
-          url: variant.fontUrl,
-        })),
-    }));
+    // Use the shared formatter for consistency
+    const formattedFonts = this._formatFonts(fonts);
 
     // Cache the results
     this.getFontsByIdsCache.set(cacheKey, {
