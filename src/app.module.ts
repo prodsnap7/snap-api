@@ -11,14 +11,13 @@ import { BullModule } from '@nestjs/bull';
 import { BlocksConsumer } from './blocks/blocks.consumer';
 import { PhotosModule } from './photos/photos.module';
 import { TemplatesModule } from './templates/templates.module';
-import { PuppeteerService } from './lib/utils/puppeteer.service';
-import { ScreenshotService } from './lib/utils/screenshot';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './auth/auth.module';
 import { ClerkClientProvider } from './providers/clerk-client.provider';
 import { ClerkAuthGuard } from './auth/clerk-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 import { IconsApiModule } from './icons-api/icons-api.module';
+import { UtilsModule } from './lib/utils/utils.module';
 
 @Module({
   imports: [
@@ -47,11 +46,10 @@ import { IconsApiModule } from './icons-api/icons-api.module';
     }),
     PhotosModule,
     AuthModule,
+    UtilsModule,
   ],
   providers: [
     BlocksConsumer,
-    PuppeteerService,
-    ScreenshotService,
     ClerkClientProvider,
     {
       provide: APP_GUARD,
@@ -62,6 +60,6 @@ import { IconsApiModule } from './icons-api/icons-api.module';
       useClass: RolesGuard,
     },
   ],
-  exports: [PuppeteerService, ScreenshotService],
+  exports: [],
 })
 export class AppModule {}

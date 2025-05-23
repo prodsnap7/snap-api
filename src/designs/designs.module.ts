@@ -6,20 +6,12 @@ import { BullModule } from '@nestjs/bull';
 import { DESIGN_PHOTO_QUEUE } from 'src/constants';
 import { UploadsModule } from 'src/uploads/uploads.module';
 import { TemplatesModule } from 'src/templates/templates.module';
-import { PuppeteerService } from 'src/lib/utils/puppeteer.service';
-import { ScreenshotService } from 'src/lib/utils/screenshot';
 import { DesignsConsumer } from './designs.consumer';
 import { DesignMaintenanceService } from './design-maintenance.service';
 
 @Module({
   controllers: [DesignsController],
-  providers: [
-    DesignsService,
-    PuppeteerService,
-    ScreenshotService,
-    DesignsConsumer,
-    DesignMaintenanceService,
-  ],
+  providers: [DesignsService, DesignsConsumer, DesignMaintenanceService],
   imports: [
     PrismaModule,
     UploadsModule,
