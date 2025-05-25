@@ -18,6 +18,7 @@ import { CreateDesignDTO, CreateDesignFromTemplateDto } from './designs.dto';
 import { Public } from 'src/lib/public-modifier';
 import { User } from '@clerk/backend';
 import { Admin } from 'src/decorators/admin.decorator';
+import { Prisma } from '@prisma/client';
 
 interface RequestWithClerkUser extends FastifyRequest {
   user: User;
@@ -43,8 +44,29 @@ export class DesignsController {
 
   @Admin()
   @Get('all')
-  async getAllDesigns(): Promise<DesignModel[]> {
-    return this.designsService.designs({});
+  async getAllDesigns(
+    @Query('userId') userId?: string,
+    @Query('page') pageStr?: string,
+    @Query('limit') limitStr?: string,
+  ): Promise<DesignModel[]> {
+    const page = pageStr ? parseInt(pageStr, 10) : 1;
+    const limit = limitStr ? parseInt(limitStr, 10) : 10; // Default limit to 10
+    const skip = (page - 1) * limit;
+
+    const params: {
+      skip?: number;
+      take?: number;
+      where?: Prisma.DesignWhereInput;
+    } = {
+      skip,
+      take: limit,
+    };
+
+    if (userId) {
+      params.where = { userId };
+    }
+
+    return this.designsService.designs(params);
   }
 
   @Post()

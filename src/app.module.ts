@@ -18,6 +18,7 @@ import { ClerkAuthGuard } from './auth/clerk-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 import { IconsApiModule } from './icons-api/icons-api.module';
 import { UtilsModule } from './lib/utils/utils.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { UtilsModule } from './lib/utils/utils.module';
     PhotosModule,
     AuthModule,
     UtilsModule,
+    UsersModule,
   ],
   providers: [
     BlocksConsumer,

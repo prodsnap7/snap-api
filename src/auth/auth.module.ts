@@ -10,6 +10,6 @@ import { ConfigModule } from '@nestjs/config';
     ConfigModule, // ConfigModule is already global in AppModule, but importing here ensures it's seen as a dependency if needed directly by this module's providers
   ],
   providers: [ClerkStrategy, ClerkClientProvider],
-  exports: [PassportModule], // Export PassportModule if other modules need to use @UseGuards(AuthGuard('clerk')) specifically
+  exports: [PassportModule, ClerkClientProvider], // Export ClerkClientProvider
 })
 export class AuthModule {}
