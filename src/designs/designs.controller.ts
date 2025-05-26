@@ -10,6 +10,7 @@ import {
   Req,
   Res,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { Design as DesignModel } from '@prisma/client';
@@ -19,6 +20,8 @@ import { Public } from 'src/lib/public-modifier';
 import { User } from '@clerk/backend';
 import { Admin } from 'src/decorators/admin.decorator';
 import { Prisma } from '@prisma/client';
+import { CloudinaryService } from 'src/uploads/cloudinary.service';
+import { ConfigService } from '@nestjs/config';
 
 interface RequestWithClerkUser extends FastifyRequest {
   user: User;
@@ -26,7 +29,13 @@ interface RequestWithClerkUser extends FastifyRequest {
 
 @Controller('designs')
 export class DesignsController {
-  constructor(private readonly designsService: DesignsService) {}
+  private readonly logger = new Logger(DesignsController.name);
+
+  constructor(
+    private readonly designsService: DesignsService,
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Public()
   @Get(':id')
@@ -96,6 +105,60 @@ export class DesignsController {
       },
       shouldGenerateThumbnail,
     );
+  }
+
+  @Put(':id/photo')
+  async updatePhotoForDesign(
+    @Param('id') id: string,
+    @Res() res: FastifyReply,
+  ): Promise<void> {
+    try {
+      const imageBuffer = await this.designsService.downloadDesign(id);
+
+      if (!imageBuffer) {
+        res
+          .status(404)
+          .send({ message: 'Unable to download design for photo generation' });
+        return;
+      }
+
+      const uniquePublicId = `prodsnap-designs/design_${id}_thumbnail_${Date.now()}`;
+      const uploadResult = await this.cloudinaryService.uploadPhotoBuffer(
+        imageBuffer,
+        uniquePublicId,
+      );
+
+      const thumbnailUrl = `https://res.cloudinary.com/${this.configService.get(
+        'CLOUDINARY_CLOUD_NAME',
+      )}/image/upload/w_500/v${uploadResult.version}/${uploadResult.public_id}.${uploadResult.format}`;
+
+      if (!uploadResult || !uploadResult.public_id) {
+        this.logger.error(
+          `Cloudinary upload failed or returned invalid data for design ${id}.`,
+        );
+        res
+          .status(500)
+          .send({ message: 'Failed to upload photo to Cloudinary' });
+        return;
+      }
+
+      const updatedDesign = await this.designsService.updateDesignThumbnail(
+        id,
+        thumbnailUrl,
+      );
+
+      res.status(200).send(updatedDesign);
+    } catch (error) {
+      this.logger.error(
+        `Error in updatePhotoForDesign for ID ${id}: ${error.message}`,
+        error.stack,
+      );
+      if (!res.sent) {
+        res.status(500).send({
+          message: 'An error occurred while updating the design photo.',
+        });
+      }
+    }
   }
 
   @Public()

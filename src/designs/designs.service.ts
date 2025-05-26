@@ -193,4 +193,36 @@ export class DesignsService {
   ): Promise<{ id: string }> {
     return this.templatesService.createDesignFromTemplate(templateId, userId);
   }
+
+  async updateDesignThumbnail(
+    designId: string,
+    thumbnailUrl: string,
+  ): Promise<Design> {
+    this.logger.log(
+      `Updating thumbnail for design ${designId} with URL: ${thumbnailUrl}`,
+    );
+    try {
+      return await this.db.design.update({
+        where: { id: designId },
+        data: {
+          thumbnail: thumbnailUrl,
+          thumbnail_pending: false,
+        },
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to update thumbnail for design ${designId}: ${error.message}`,
+        error.stack,
+      );
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025' // Record to update not found
+      ) {
+        throw new NotFoundException(
+          `Design with ID ${designId} not found when trying to update thumbnail.`,
+        );
+      }
+      throw error; // Re-throw other errors
+    }
+  }
 }
