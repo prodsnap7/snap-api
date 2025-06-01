@@ -35,7 +35,7 @@ export class DesignsController {
     private readonly designsService: DesignsService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   @Public()
   @Get(':id')
@@ -55,21 +55,10 @@ export class DesignsController {
   @Get('all')
   async getAllDesigns(
     @Query('userId') userId?: string,
-    @Query('page') pageStr?: string,
-    @Query('limit') limitStr?: string,
   ): Promise<DesignModel[]> {
-    const page = pageStr ? parseInt(pageStr, 10) : 1;
-    const limit = limitStr ? parseInt(limitStr, 10) : 10; // Default limit to 10
-    const skip = (page - 1) * limit;
-
     const params: {
-      skip?: number;
-      take?: number;
       where?: Prisma.DesignWhereInput;
-    } = {
-      skip,
-      take: limit,
-    };
+    } = {};
 
     if (userId) {
       params.where = { userId };
