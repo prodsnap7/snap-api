@@ -35,7 +35,7 @@ export class DesignsController {
     private readonly designsService: DesignsService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   @Public()
   @Get(':id')
@@ -178,10 +178,6 @@ export class DesignsController {
 
     if (!design) {
       throw new BadRequestException('Design not found');
-    }
-
-    if (design.userId !== user.id) {
-      throw new BadRequestException('Not authorized to delete this design');
     }
 
     try {
