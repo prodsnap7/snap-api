@@ -180,6 +180,10 @@ export class DesignsController {
       throw new BadRequestException('Design not found');
     }
 
+    if (design.userId !== user.id || user.publicMetadata.role !== 'admin') {
+      throw new BadRequestException('Not authorized to delete this design');
+    }
+
     try {
       // Delete the design and its thumbnail
       await this.designsService.deleteDesign(id);
