@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CloudinaryService } from 'src/uploads/cloudinary.service';
+import { ImageKitService } from 'src/uploads/imagekit.service';
 import { CreateTemplateDto } from './templates.dto';
 import { Template, Prisma } from '@prisma/client';
 
@@ -12,7 +12,7 @@ import { Template, Prisma } from '@prisma/client';
 export class TemplatesService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cloudinaryService: CloudinaryService,
+    private readonly imageKitService: ImageKitService,
   ) {}
 
   async create(userId: string, data: CreateTemplateDto): Promise<Template> {
@@ -73,9 +73,9 @@ export class TemplatesService {
       throw new BadRequestException('Not authorized to delete this template');
     }
 
-    // Delete thumbnail from Cloudinary if exists
+    // Delete thumbnail from ImageKit if exists
     if (template.thumbnail) {
-      await this.cloudinaryService.deletePhoto(
+      await this.imageKitService.deletePhoto(
         `prodsnap-templates/${template.id}`,
       );
     }

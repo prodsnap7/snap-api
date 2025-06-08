@@ -4,17 +4,17 @@ import { ConfigService } from '@nestjs/config';
 import { BLOCK_PHOTO_QUEUE } from 'src/constants';
 import { ScreenshotService } from 'src/lib/utils/screenshot';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CloudinaryService } from 'src/uploads/cloudinary.service';
+import { ImageKitService } from 'src/uploads/imagekit.service';
 
 @Injectable()
 @Processor(BLOCK_PHOTO_QUEUE)
 export class BlocksConsumer {
   constructor(
     private readonly db: PrismaService,
-    private readonly cloudinaryService: CloudinaryService,
+    private readonly imageKitService: ImageKitService,
     private readonly configService: ConfigService,
     private readonly screenshotService: ScreenshotService,
-  ) {}
+  ) { }
   @Process('create-photo')
   async createBlockPhoto(job: any) {
     console.log('Creating block photo...');
@@ -29,7 +29,7 @@ export class BlocksConsumer {
     // then update the block with the photo URL
     if (photo) {
       console.log('Photo taken!');
-      const upload = await this.cloudinaryService.uploadPhotoBuffer(
+      const upload = await this.imageKitService.uploadPhotoBuffer(
         photo,
         `prodsnap-blocks/${blockId}-${Date.now()}}`,
       );

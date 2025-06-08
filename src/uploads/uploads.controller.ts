@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { shortId, ensureHttps } from 'src/lib/utils';
 import { UploadsService } from './uploads.service';
-import { CloudinaryService } from './cloudinary.service';
+import { ImageKitService } from './imagekit.service';
 import { ImageTransformService } from './image-transform.service';
 import { User } from '@clerk/backend';
 import { FastifyRequest } from 'fastify';
@@ -24,8 +24,8 @@ export class UploadsController {
   constructor(
     private readonly uploadsService: UploadsService,
     private readonly imgTransformService: ImageTransformService,
-    private readonly cloudinaryService: CloudinaryService,
-  ) {}
+    private readonly imageKitService: ImageKitService,
+  ) { }
 
   @Get()
   async findAll(@Req() req: RequestWithClerkUser) {
@@ -52,7 +52,7 @@ export class UploadsController {
 
     const public_id = `prodsnap-uploads/${userId}/${id}-${fileNameWithoutExt}`;
 
-    const { url } = await this.cloudinaryService.uploadPhotoFromStream(
+    const { url } = await this.imageKitService.uploadPhotoFromStream(
       data.file,
       public_id,
     );
@@ -74,14 +74,14 @@ export class UploadsController {
     const filename = shortId();
     const public_id = `prodsnap-uploads/${userId}/` + filename;
 
-    const upload = await this.cloudinaryService.uploadPhotoFromUrl(
+    const upload = await this.imageKitService.uploadPhotoFromUrl(
       photo,
       public_id,
     );
     const res = await this.uploadsService.create({
       url: upload.url,
       userId,
-      publicId: upload.public_id,
+      publicId: upload.fileId,
       backgroundRemoved: true,
     });
 
@@ -102,8 +102,8 @@ export class UploadsController {
     const public_id = `prodsnap-screenshots/${userId}/${designId}-screenshot`;
 
     try {
-      await this.cloudinaryService.deletePhoto(public_id);
-      const { url } = await this.cloudinaryService.uploadPhotoFromStream(
+      await this.imageKitService.deletePhoto(public_id);
+      const { url } = await this.imageKitService.uploadPhotoFromStream(
         data.file,
         public_id,
       );
@@ -131,7 +131,7 @@ export class UploadsController {
     }
 
     try {
-      await this.cloudinaryService.deletePhoto(upload.publicId);
+      await this.imageKitService.deletePhoto(upload.publicId);
       await this.uploadsService.remove(Number(id));
       return { success: true };
     } catch (error) {
