@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { DESIGN_PHOTO_QUEUE } from 'src/constants';
 import { ScreenshotService } from 'src/lib/utils/screenshot';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CloudinaryService } from 'src/uploads/cloudinary.service';
+import { ImageKitService } from 'src/uploads/imagekit.service';
 
 @Injectable()
 @Processor(DESIGN_PHOTO_QUEUE)
@@ -13,10 +13,10 @@ export class DesignsConsumer {
 
   constructor(
     private readonly db: PrismaService,
-    private readonly cloudinaryService: CloudinaryService,
+    private readonly imageKitService: ImageKitService,
     private readonly configService: ConfigService,
     private readonly screenshotService: ScreenshotService,
-  ) {}
+  ) { }
 
   @Process('create-thumbnail')
   async createDesignPhoto(job: any) {
@@ -35,11 +35,13 @@ export class DesignsConsumer {
 
       if (photo) {
         this.logger.log(`Photo taken for design ${designId}, uploading...`);
-        const upload = await this.cloudinaryService.uploadPhotoBuffer(
+        const upload = await this.imageKitService.uploadPhotoBuffer(
           photo,
           `prodsnap-designs/${designId}-${Date.now()}`,
         );
-        const uploadUrl = `https://res.cloudinary.com/${this.configService.get('CLOUDINARY_CLOUD_NAME')}/image/upload/w_500/v${upload.version}/${upload.public_id}.${upload.format}`;
+
+        // Use ImageKit URL directly
+        const uploadUrl = upload.url;
 
         await this.db.design.update({
           where: { id: designId },

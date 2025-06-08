@@ -7,7 +7,7 @@ import { DESIGN_PHOTO_QUEUE } from 'src/constants';
 import { ScreenshotService } from 'src/lib/utils/screenshot';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TemplatesService } from 'src/templates/templates.service';
-import { CloudinaryService } from 'src/uploads/cloudinary.service';
+import { ImageKitService } from 'src/uploads/imagekit.service';
 
 @Injectable()
 export class DesignsService {
@@ -17,7 +17,7 @@ export class DesignsService {
     private db: PrismaService,
     private readonly configService: ConfigService,
     @InjectQueue(DESIGN_PHOTO_QUEUE) private readonly designPhotoQueue: Queue,
-    private readonly cloudinaryService: CloudinaryService,
+    private readonly imageKitService: ImageKitService,
     private readonly screenshotService: ScreenshotService,
     private readonly templatesService: TemplatesService,
   ) {}
@@ -124,11 +124,11 @@ export class DesignsService {
         throw new NotFoundException(`Design with ID ${id} not found`);
       }
 
-      // If there's a thumbnail, delete it from Cloudinary
+      // If there's a thumbnail, delete it from ImageKit
       if (design.thumbnail) {
         // Extract public_id from the thumbnail URL
         const publicId = `prodsnap-designs/${id}`;
-        await this.cloudinaryService.deletePhoto(publicId);
+        await this.imageKitService.deletePhoto(publicId);
       }
 
       // Delete the design from the database

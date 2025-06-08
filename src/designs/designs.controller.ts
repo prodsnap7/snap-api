@@ -20,7 +20,7 @@ import { Public } from 'src/lib/public-modifier';
 import { User } from '@clerk/backend';
 import { Admin } from 'src/decorators/admin.decorator';
 import { Prisma } from '@prisma/client';
-import { CloudinaryService } from 'src/uploads/cloudinary.service';
+import { ImageKitService } from 'src/uploads/imagekit.service';
 import { ConfigService } from '@nestjs/config';
 
 interface RequestWithClerkUser extends FastifyRequest {
@@ -33,7 +33,7 @@ export class DesignsController {
 
   constructor(
     private readonly designsService: DesignsService,
-    private readonly cloudinaryService: CloudinaryService,
+    private readonly imageKitService: ImageKitService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -102,6 +102,55 @@ export class DesignsController {
     @Res() res: FastifyReply,
   ): Promise<void> {
     try {
+      // Get current design to check for existing thumbnail
+      const currentDesign = await this.designsService.design({ id });
+
+      if (!currentDesign) {
+        res.status(404).send({ message: 'Design not found' });
+        return;
+      }
+
+      // If there's an existing thumbnail, try to delete it from ImageKit
+      if (currentDesign.thumbnail) {
+        try {
+          // Check if it's an ImageKit URL (not a legacy Cloudinary URL)
+          if (currentDesign.thumbnail.includes('imagekit.io')) {
+            this.logger.log(
+              `Attempting to delete previous thumbnail for design ${id}`,
+            );
+
+            // Extract the file path from the ImageKit URL
+            const imageKitUrlPattern = /imagekit\.io\/[^\/]+\/(.+)/;
+            const match = currentDesign.thumbnail.match(imageKitUrlPattern);
+
+            if (match) {
+              const filePath = match[1];
+              // Remove any query parameters and get just the path
+              const cleanPath = filePath.split('?')[0];
+
+              // Delete the previous thumbnail using the new method
+              const deleteSuccess =
+                await this.imageKitService.deletePhotoByPath(cleanPath);
+
+              if (deleteSuccess) {
+                this.logger.log(
+                  `Successfully deleted previous thumbnail: ${cleanPath}`,
+                );
+              } else {
+                this.logger.warn(
+                  `Could not delete previous thumbnail: ${cleanPath}`,
+                );
+              }
+            }
+          }
+        } catch (deleteError) {
+          // Log the error but continue with upload - don't let deletion failure stop new upload
+          this.logger.warn(
+            `Failed to delete previous thumbnail for design ${id}: ${deleteError.message}`,
+          );
+        }
+      }
+
       const imageBuffer = await this.designsService.downloadDesign(id);
 
       if (!imageBuffer) {
@@ -111,42 +160,34 @@ export class DesignsController {
         return;
       }
 
-      const uniquePublicId = `prodsnap-designs/design_${id}_thumbnail_${Date.now()}`;
-      const uploadResult = await this.cloudinaryService.uploadPhotoBuffer(
+      const uniquePublicId = `designs/design_${id}_thumbnail_${Date.now()}`;
+      const uploadResult = await this.imageKitService.uploadPhotoBuffer(
         imageBuffer,
         uniquePublicId,
       );
 
-      const thumbnailUrl = `https://res.cloudinary.com/${this.configService.get(
-        'CLOUDINARY_CLOUD_NAME',
-      )}/image/upload/w_500/v${uploadResult.version}/${uploadResult.public_id}.${uploadResult.format}`;
+      // ImageKit returns the direct URL in the upload response
+      const thumbnailUrl = uploadResult.url;
 
-      if (!uploadResult || !uploadResult.public_id) {
+      if (!uploadResult || !uploadResult.fileId) {
         this.logger.error(
-          `Cloudinary upload failed or returned invalid data for design ${id}.`,
+          `ImageKit upload failed or returned invalid data for design ${id}.`,
         );
-        res
-          .status(500)
-          .send({ message: 'Failed to upload photo to Cloudinary' });
+        res.status(500).send({ message: 'Failed to upload photo to ImageKit' });
         return;
       }
 
-      const updatedDesign = await this.designsService.updateDesignThumbnail(
-        id,
-        thumbnailUrl,
-      );
+      await this.designsService.updateDesignThumbnail(id, thumbnailUrl);
 
-      res.status(200).send(updatedDesign);
+      res.status(200).send({
+        message: 'Photo uploaded and design updated successfully',
+        thumbnailUrl,
+      });
     } catch (error) {
       this.logger.error(
-        `Error in updatePhotoForDesign for ID ${id}: ${error.message}`,
-        error.stack,
+        `Error updating photo for design ${id}: ${error.message}`,
       );
-      if (!res.sent) {
-        res.status(500).send({
-          message: 'An error occurred while updating the design photo.',
-        });
-      }
+      res.status(500).send({ message: 'Internal server error' });
     }
   }
 
