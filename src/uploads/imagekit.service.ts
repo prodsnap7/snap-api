@@ -2,8 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { streamToBuffer } from 'src/lib/utils';
 import { Readable } from 'stream';
-
-const ImageKit = require('imagekit');
+import ImageKit from 'imagekit';
 
 @Injectable()
 export class ImageKitService {
@@ -21,6 +20,12 @@ export class ImageKitService {
     photoBuffer: Buffer,
     public_id: string,
   ): Promise<any> {
+    console.log('🔍 ImageKitService.uploadPhotoBuffer called with:', {
+      bufferSize: photoBuffer?.length,
+      publicId: public_id,
+      hasImageKit: !!this.imagekit,
+    });
+
     if (!Buffer.isBuffer(photoBuffer)) {
       throw new TypeError('The photoBuffer argument must be a Buffer.');
     }
@@ -38,15 +43,27 @@ export class ImageKitService {
         fileName = pathParts[pathParts.length - 1];
       }
 
+      console.log('📁 ImageKit upload params:', {
+        folder,
+        fileName,
+        originalPublicId: public_id,
+      });
+
       const result = await this.imagekit.upload({
         file: photoBuffer,
         fileName: fileName,
         folder: folder,
       });
 
+      console.log('✅ ImageKit upload successful:', {
+        url: result.url,
+        fileId: result.fileId,
+        name: result.name,
+      });
+
       return result;
     } catch (error) {
-      console.error('ImageKit upload error:', JSON.stringify(error, null, 2));
+      console.error('❌ ImageKit upload error:', JSON.stringify(error, null, 2));
       throw error;
     }
   }
@@ -120,19 +137,25 @@ export class ImageKitService {
       // Search for files with the given path
       const searchResult = await this.imagekit.listFiles({
         searchQuery: `name:"${filePath.split('/').pop()}"`,
-        path: filePath.includes('/') ? filePath.substring(0, filePath.lastIndexOf('/')) : '',
+        path: filePath.includes('/')
+          ? filePath.substring(0, filePath.lastIndexOf('/'))
+          : '',
       });
 
       if (searchResult && searchResult.length > 0) {
         // Find exact match by comparing the full path
         const exactMatch = searchResult.find((file: any) => {
-          const fullPath = file.filePath.startsWith('/') ? file.filePath.substring(1) : file.filePath;
+          const fullPath = file.filePath.startsWith('/')
+            ? file.filePath.substring(1)
+            : file.filePath;
           return fullPath === filePath;
         });
 
         if (exactMatch) {
           await this.imagekit.deleteFile(exactMatch.fileId);
-          console.log(`Successfully deleted file: ${filePath} (ID: ${exactMatch.fileId})`);
+          console.log(
+            `Successfully deleted file: ${filePath} (ID: ${exactMatch.fileId})`,
+          );
           return true;
         }
       }
@@ -144,4 +167,4 @@ export class ImageKitService {
       return false;
     }
   }
-} 
+}

@@ -35,7 +35,7 @@ export class DesignsController {
     private readonly designsService: DesignsService,
     private readonly imageKitService: ImageKitService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   @Public()
   @Get(':id')
@@ -161,10 +161,24 @@ export class DesignsController {
       }
 
       const uniquePublicId = `designs/design_${id}_thumbnail_${Date.now()}`;
+
+      console.log('🚀 About to call imageKitService.uploadPhotoBuffer with:', {
+        serviceConstructor: this.imageKitService.constructor.name,
+        publicId: uniquePublicId,
+        bufferSize: imageBuffer.length,
+      });
+
       const uploadResult = await this.imageKitService.uploadPhotoBuffer(
         imageBuffer,
         uniquePublicId,
       );
+
+      console.log('📸 Upload result from service:', {
+        url: uploadResult?.url,
+        fileId: uploadResult?.fileId,
+        publicId: uploadResult?.public_id, // Check if Cloudinary property exists
+        resultKeys: Object.keys(uploadResult || {}),
+      });
 
       // ImageKit returns the direct URL in the upload response
       const thumbnailUrl = uploadResult.url;
