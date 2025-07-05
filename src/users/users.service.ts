@@ -287,4 +287,59 @@ export class UsersService {
     const subscriptionTier = await this.getSubscriptionTier(clerkUserId);
     return subscriptionTier === SubscriptionTier.PRO;
   }
+
+  // Usage limit checking methods
+  async getCurrentUsage(
+    clerkUserId: string,
+    usageType: string,
+  ): Promise<number> {
+    const user = await this.findByClerkId(clerkUserId);
+
+    switch (usageType) {
+      case 'downloads':
+        return user.downloadCount;
+      case 'designs':
+        return user.designCount;
+      case 'bgRemoval':
+        return user.bgRemovalApiCount;
+      case 'iconsApi':
+        return user.iconsApiCount;
+      case 'photosApi':
+        return user.photosApiCount;
+      default:
+        throw new Error(`Unknown usage type: ${usageType}`);
+    }
+  }
+
+  async incrementUsageAtomic(
+    clerkUserId: string,
+    usageType: string,
+  ): Promise<User> {
+    const incrementData: Partial<Record<string, { increment: number }>> = {};
+
+    switch (usageType) {
+      case 'downloads':
+        incrementData.downloadCount = { increment: 1 };
+        break;
+      case 'designs':
+        incrementData.designCount = { increment: 1 };
+        break;
+      case 'bgRemoval':
+        incrementData.bgRemovalApiCount = { increment: 1 };
+        break;
+      case 'iconsApi':
+        incrementData.iconsApiCount = { increment: 1 };
+        break;
+      case 'photosApi':
+        incrementData.photosApiCount = { increment: 1 };
+        break;
+      default:
+        throw new Error(`Unknown usage type: ${usageType}`);
+    }
+
+    return this.prisma.user.update({
+      where: { clerkUserId },
+      data: incrementData,
+    });
+  }
 }

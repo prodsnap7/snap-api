@@ -11,6 +11,7 @@ import {
   Res,
   BadRequestException,
   Logger,
+  UseGuards,
 } from '@nestjs/common';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { Design as DesignModel } from '@prisma/client';
@@ -19,6 +20,8 @@ import { CreateDesignDTO, CreateDesignFromTemplateDto } from './designs.dto';
 import { Public } from 'src/lib/public-modifier';
 import { User } from '@clerk/backend';
 import { Admin } from 'src/decorators/admin.decorator';
+import { UsageLimit } from 'src/decorators/usage-limit.decorator';
+import { UsageLimitGuard } from 'src/middleware/usage-limit.middleware';
 import { Prisma } from '@prisma/client';
 import { ImageKitService } from 'src/uploads/imagekit.service';
 import { ConfigService } from '@nestjs/config';
@@ -35,7 +38,7 @@ export class DesignsController {
     private readonly designsService: DesignsService,
     private readonly imageKitService: ImageKitService,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   @Public()
   @Get(':id')
@@ -68,6 +71,8 @@ export class DesignsController {
   }
 
   @Post()
+  @UseGuards(UsageLimitGuard)
+  @UsageLimit('designs')
   async createDesign(
     @Req() req: RequestWithClerkUser,
     @Body() createDesignDTO: CreateDesignDTO,
@@ -269,33 +274,28 @@ export class DesignsController {
   }
 
   @Post(':id/duplicate')
+  @UseGuards(UsageLimitGuard)
+  @UsageLimit('designs')
   async duplicateDesign(
     @Param('id') id: string,
     @Req() req: RequestWithClerkUser,
   ): Promise<DesignModel> {
     const { user } = req;
-    if (!user || !user.id) {
-      throw new BadRequestException(
-        'User information is missing from the request.',
-      );
-    }
     return this.designsService.duplicateDesign(id, user.id);
   }
 
   @Post('from-template')
+  @UseGuards(UsageLimitGuard)
+  @UsageLimit('designs')
   async createDesignFromTemplate(
     @Body() createDesignDto: CreateDesignFromTemplateDto,
     @Req() req: RequestWithClerkUser,
   ): Promise<{ id: string }> {
     const { user } = req;
-    if (!user || !user.id) {
-      throw new BadRequestException(
-        'User information is missing from the request.',
-      );
-    }
-    return this.designsService.createDesignFromTemplate(
+    const design = await this.designsService.createDesignFromTemplate(
       createDesignDto.templateId,
       user.id,
     );
+    return { id: design.id };
   }
 }

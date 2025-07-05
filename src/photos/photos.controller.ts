@@ -1,13 +1,17 @@
-import { Controller, Get, Query, Res } from '@nestjs/common';
+import { Controller, Get, Query, Res, UseGuards } from '@nestjs/common';
 import { PhotosService } from './photos.service';
 import { FastifyReply } from 'fastify';
 import { Public } from 'src/lib/public-modifier';
+import { UsageLimit } from 'src/decorators/usage-limit.decorator';
+import { UsageLimitGuard } from 'src/middleware/usage-limit.middleware';
 
 @Controller('photos')
 export class PhotosController {
   constructor(private readonly photosService: PhotosService) {}
 
   @Get('search')
+  @UseGuards(UsageLimitGuard)
+  @UsageLimit('photosApi')
   searchPhotos(@Query('q') query: string) {
     return this.photosService.searchPhotos(query);
   }
