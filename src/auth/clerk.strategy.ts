@@ -26,7 +26,7 @@ export class ClerkStrategy extends PassportStrategy(Strategy, 'clerk') {
     // Log request details
     this.logger.debug(`
       Request: ${req.method} ${req.url}
-      Route: ${req.routerPath || 'Unknown'}
+      Route: ${req.url || 'Unknown'}
       Headers: ${JSON.stringify(this.sanitizeHeaders(req.headers))}
       Query: ${JSON.stringify(req.query)}
     `);

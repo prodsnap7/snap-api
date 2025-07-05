@@ -26,16 +26,18 @@ export class IconsService {
 
   async getIcons(query: string): Promise<any> {
     try {
-      // 1. Check cache
-      const cached = await this.prisma.nounIconCache.findUnique({
-        where: { query },
+      // Check cache first
+      const cached = await this.prisma.svgIcon.findUnique({
+        where: {
+          query_page: {
+            query,
+            page: 1,
+          },
+        },
       });
-      const now = Date.now();
-      if (
-        cached &&
-        now - new Date(cached.createdAt).getTime() < this.cacheExpirationMs
-      ) {
-        return cached.iconData;
+
+      if (cached) {
+        return cached.iconData as any;
       }
 
       // 2. If not cached or expired, call API
@@ -61,13 +63,21 @@ export class IconsService {
       });
 
       // 3. Store in cache
-      await this.prisma.nounIconCache.upsert({
-        where: { query },
+      await this.prisma.svgIcon.upsert({
+        where: {
+          query_page: {
+            query,
+            page: 1,
+          },
+        },
         update: {
           iconData: data as Prisma.InputJsonValue,
-          createdAt: new Date(),
         },
-        create: { query, iconData: data as Prisma.InputJsonValue },
+        create: {
+          query,
+          page: 1,
+          iconData: data as Prisma.InputJsonValue,
+        },
       });
 
       return data;

@@ -13,9 +13,9 @@ async function bootstrap() {
   );
   app.setGlobalPrefix('api/v1');
   app.enableCors();
-  await app.register(multipart, {
+  await app.register(multipart as any, {
     limits: {
-      fileSize: 10 * 1024 * 1024, // 10MB limit
+      fileSize: 10 * 1024 * 1024, // 10MB
     },
   });
   await app.listen(3000, '0.0.0.0');
