@@ -7,14 +7,12 @@ import {
   Req,
   Param,
   BadRequestException,
-  UseGuards,
 } from '@nestjs/common';
 import { shortId, ensureHttps } from 'src/lib/utils';
 import { UploadsService } from './uploads.service';
 import { ImageKitService } from './imagekit.service';
 import { ImageTransformService } from './image-transform.service';
 import { UsageLimit } from 'src/decorators/usage-limit.decorator';
-import { UsageLimitGuard } from 'src/middleware/usage-limit.middleware';
 import { User } from '@clerk/backend';
 import { FastifyRequest } from 'fastify';
 
@@ -46,7 +44,6 @@ export class UploadsController {
   }
 
   @Post()
-  @UseGuards(UsageLimitGuard)
   @UsageLimit('downloads')
   async uploadPhoto(@Req() req: RequestWithClerkUser) {
     const data = await req.file();
@@ -72,7 +69,6 @@ export class UploadsController {
   }
 
   @Post('remove-bg')
-  @UseGuards(UsageLimitGuard)
   @UsageLimit('bgRemoval')
   async removeBackground(@Req() req: RequestWithClerkUser, @Body() data) {
     const { user } = req;
@@ -96,7 +92,6 @@ export class UploadsController {
   }
 
   @Post('screenshot')
-  @UseGuards(UsageLimitGuard)
   @UsageLimit('downloads')
   async uploadScreenshot(@Req() req: RequestWithClerkUser) {
     const data = await req.file();

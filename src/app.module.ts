@@ -16,6 +16,7 @@ import { AuthModule } from './auth/auth.module';
 import { ClerkClientProvider } from './providers/clerk-client.provider';
 import { ClerkAuthGuard } from './auth/clerk-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
+import { UsageLimitGuard } from './middleware/usage-limit.middleware';
 import { IconsApiModule } from './icons-api/icons-api.module';
 import { UtilsModule } from './lib/utils/utils.module';
 import { UsersModule } from './users/users.module';
@@ -69,6 +70,10 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: UsageLimitGuard,
     },
   ],
   exports: [],

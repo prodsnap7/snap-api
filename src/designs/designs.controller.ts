@@ -11,7 +11,6 @@ import {
   Res,
   BadRequestException,
   Logger,
-  UseGuards,
 } from '@nestjs/common';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { Design as DesignModel } from '@prisma/client';
@@ -21,7 +20,6 @@ import { Public } from 'src/lib/public-modifier';
 import { User } from '@clerk/backend';
 import { Admin } from 'src/decorators/admin.decorator';
 import { UsageLimit } from 'src/decorators/usage-limit.decorator';
-import { UsageLimitGuard } from 'src/middleware/usage-limit.middleware';
 import { Prisma } from '@prisma/client';
 import { ImageKitService } from 'src/uploads/imagekit.service';
 import { ConfigService } from '@nestjs/config';
@@ -71,7 +69,6 @@ export class DesignsController {
   }
 
   @Post()
-  @UseGuards(UsageLimitGuard)
   @UsageLimit('designs')
   async createDesign(
     @Req() req: RequestWithClerkUser,
@@ -274,7 +271,6 @@ export class DesignsController {
   }
 
   @Post(':id/duplicate')
-  @UseGuards(UsageLimitGuard)
   @UsageLimit('designs')
   async duplicateDesign(
     @Param('id') id: string,
@@ -285,7 +281,6 @@ export class DesignsController {
   }
 
   @Post('from-template')
-  @UseGuards(UsageLimitGuard)
   @UsageLimit('designs')
   async createDesignFromTemplate(
     @Body() createDesignDto: CreateDesignFromTemplateDto,
