@@ -57,18 +57,19 @@ export class ClerkWebhooksService {
           await this.handleUserDeleted(data as ClerkUser);
           break;
 
-        // Billing events
+        // Subscription events (user-specific)
+        case 'subscription.active':
+          await this.handleSubscriptionActive(data as ClerkSubscription);
+          break;
         case 'subscription.created':
           await this.handleSubscriptionCreated(data as ClerkSubscription);
           break;
+        case 'subscription.pastDue':
+        case 'subscription.past_due':
+          await this.handleSubscriptionPastDue(data as ClerkSubscription);
+          break;
         case 'subscription.updated':
           await this.handleSubscriptionUpdated(data as ClerkSubscription);
-          break;
-        case 'subscription.cancelled':
-          await this.handleSubscriptionCancelled(data as ClerkSubscription);
-          break;
-        case 'subscription.deleted':
-          await this.handleSubscriptionDeleted(data as ClerkSubscription);
           break;
 
         default:
@@ -156,6 +157,29 @@ export class ClerkWebhooksService {
     }
   }
 
+  // Subscription events (user-specific)
+  private async handleSubscriptionActive(
+    data: ClerkSubscription,
+  ): Promise<void> {
+    try {
+      const subscriptionTier = this.mapPlanToSubscriptionTier(data.plan.name);
+
+      const updatedUser = await this.usersService.updateByClerkId(
+        data.user_id,
+        {
+          subscriptionTier,
+        },
+      );
+
+      this.logger.log(
+        `User ${updatedUser.email} subscription is now active: ${data.plan.name} (${subscriptionTier})`,
+      );
+    } catch (error) {
+      this.logger.error('Error handling subscription active:', error);
+      throw error;
+    }
+  }
+
   private async handleSubscriptionCreated(
     data: ClerkSubscription,
   ): Promise<void> {
@@ -170,10 +194,34 @@ export class ClerkWebhooksService {
       );
 
       this.logger.log(
-        `User ${updatedUser.email} subscribed to plan: ${data.plan.name} (${subscriptionTier})`,
+        `User ${updatedUser.email} created subscription: ${data.plan.name} (${subscriptionTier})`,
       );
     } catch (error) {
       this.logger.error('Error handling subscription created:', error);
+      throw error;
+    }
+  }
+
+  private async handleSubscriptionPastDue(
+    data: ClerkSubscription,
+  ): Promise<void> {
+    try {
+      // For past due subscriptions, we might want to maintain current tier temporarily
+      // but log the issue for manual review
+      this.logger.warn(
+        `Subscription past due for user ${data.user_id}, plan: ${data.plan.name}. Status: ${data.status}`,
+      );
+
+      // Optionally downgrade to FREE immediately or after grace period
+      // For now, just log and keep current tier
+      //
+      // If you want to downgrade immediately:
+      // const updatedUser = await this.usersService.updateByClerkId(data.user_id, {
+      //   subscriptionTier: SubscriptionTier.FREE,
+      // });
+      // this.logger.log(`User ${updatedUser.email} downgraded to FREE due to past due payment`);
+    } catch (error) {
+      this.logger.error('Error handling subscription past due:', error);
       throw error;
     }
   }
@@ -192,52 +240,10 @@ export class ClerkWebhooksService {
       );
 
       this.logger.log(
-        `User ${updatedUser.email} updated subscription to: ${data.plan.name} (${subscriptionTier})`,
+        `User ${updatedUser.email} updated subscription: ${data.plan.name} (${subscriptionTier})`,
       );
     } catch (error) {
       this.logger.error('Error handling subscription updated:', error);
-      throw error;
-    }
-  }
-
-  private async handleSubscriptionCancelled(
-    data: ClerkSubscription,
-  ): Promise<void> {
-    try {
-      // When subscription is cancelled, downgrade to FREE
-      const updatedUser = await this.usersService.updateByClerkId(
-        data.user_id,
-        {
-          subscriptionTier: SubscriptionTier.FREE,
-        },
-      );
-
-      this.logger.log(
-        `User ${updatedUser.email} cancelled subscription, downgraded to FREE`,
-      );
-    } catch (error) {
-      this.logger.error('Error handling subscription cancelled:', error);
-      throw error;
-    }
-  }
-
-  private async handleSubscriptionDeleted(
-    data: ClerkSubscription,
-  ): Promise<void> {
-    try {
-      // When subscription is deleted, ensure user is on FREE tier
-      const updatedUser = await this.usersService.updateByClerkId(
-        data.user_id,
-        {
-          subscriptionTier: SubscriptionTier.FREE,
-        },
-      );
-
-      this.logger.log(
-        `User ${updatedUser.email} subscription deleted, set to FREE tier`,
-      );
-    } catch (error) {
-      this.logger.error('Error handling subscription deleted:', error);
       throw error;
     }
   }
