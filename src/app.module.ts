@@ -19,6 +19,7 @@ import { RolesGuard } from './auth/roles.guard';
 import { IconsApiModule } from './icons-api/icons-api.module';
 import { UtilsModule } from './lib/utils/utils.module';
 import { UsersModule } from './users/users.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     UtilsModule,
     UsersModule,
+    WebhooksModule,
   ],
   providers: [
     BlocksConsumer,
