@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { UsersService } from 'src/users/users.service';
 import { SubscriptionTier } from '@prisma/client';
+import { WebhookEvent } from '@clerk/fastify/webhooks';
 
 interface ClerkUser {
   id: string;
@@ -14,66 +15,46 @@ interface ClerkUser {
   updated_at: number;
 }
 
-interface ClerkSubscription {
-  id: string;
-  user_id: string;
-  plan: {
-    id: string;
-    name: string;
-    price: number;
-  };
-  status: 'active' | 'cancelled' | 'past_due' | 'incomplete';
-  created_at: number;
-  updated_at: number;
-}
-
-interface ClerkWebhookEvent {
-  type: string;
-  data: ClerkUser | ClerkSubscription;
-  object: string;
-}
-
 @Injectable()
 export class ClerkWebhooksService {
   private readonly logger = new Logger(ClerkWebhooksService.name);
 
   constructor(private readonly usersService: UsersService) {}
 
-  async handleWebhook(event: ClerkWebhookEvent): Promise<void> {
-    const { type, data } = event;
+  async handleWebhook(event: WebhookEvent): Promise<void> {
+    this.logger.log(`Processing webhook event: ${event.type}`);
 
-    this.logger.log(`Received Clerk webhook: ${type}`);
+    const { type, data } = event;
 
     try {
       switch (type) {
-        // User events
         case 'user.created':
-          await this.handleUserCreated(data as ClerkUser);
+          await this.handleUserCreated(data as any);
           break;
         case 'user.updated':
-          await this.handleUserUpdated(data as ClerkUser);
+          await this.handleUserUpdated(data as any);
           break;
         case 'user.deleted':
-          await this.handleUserDeleted(data as ClerkUser);
+          await this.handleUserDeleted(data as any);
           break;
-
-        // Subscription events (user-specific)
-        case 'subscription.active':
-          await this.handleSubscriptionActive(data as ClerkSubscription);
-          break;
-        case 'subscription.created':
-          await this.handleSubscriptionCreated(data as ClerkSubscription);
-          break;
-        case 'subscription.pastDue':
-        case 'subscription.past_due':
-          await this.handleSubscriptionPastDue(data as ClerkSubscription);
-          break;
-        case 'subscription.updated':
-          await this.handleSubscriptionUpdated(data as ClerkSubscription);
-          break;
-
         default:
-          this.logger.warn(`Unhandled webhook type: ${type}`);
+          // Handle subscription events (these might not be in the WebhookEvent type but Clerk sends them)
+          const eventType = type as string;
+          if (eventType === 'subscription.active') {
+            await this.handleSubscriptionActive(data as any);
+          } else if (eventType === 'subscription.created') {
+            await this.handleSubscriptionCreated(data as any);
+          } else if (
+            eventType === 'subscription.pastDue' ||
+            eventType === 'subscription.past_due'
+          ) {
+            await this.handleSubscriptionPastDue(data as any);
+          } else if (eventType === 'subscription.updated') {
+            await this.handleSubscriptionUpdated(data as any);
+          } else {
+            this.logger.warn(`Unhandled webhook event type: ${eventType}`);
+          }
+          break;
       }
     } catch (error) {
       this.logger.error(`Error handling webhook ${type}:`, error);
@@ -157,12 +138,27 @@ export class ClerkWebhooksService {
     }
   }
 
-  // Subscription events (user-specific)
-  private async handleSubscriptionActive(
-    data: ClerkSubscription,
-  ): Promise<void> {
+  private mapPlanToSubscriptionTier(planName: string): SubscriptionTier {
+    // Map Clerk plan names to your subscription tiers
+    // Adjust these mappings based on your actual plan names in Clerk
+    switch (planName.toLowerCase()) {
+      case 'pro':
+      case 'premium':
+      case 'paid':
+        return SubscriptionTier.PRO;
+      case 'free':
+      case 'basic':
+      default:
+        return SubscriptionTier.FREE;
+    }
+  }
+
+  // Subscription event handlers
+  private async handleSubscriptionActive(data: any): Promise<void> {
     try {
-      const subscriptionTier = this.mapPlanToSubscriptionTier(data.plan.name);
+      const subscriptionTier = this.mapPlanToSubscriptionTier(
+        data.plan?.name || 'free',
+      );
 
       const updatedUser = await this.usersService.updateByClerkId(
         data.user_id,
@@ -172,7 +168,7 @@ export class ClerkWebhooksService {
       );
 
       this.logger.log(
-        `User ${updatedUser.email} subscription is now active: ${data.plan.name} (${subscriptionTier})`,
+        `User ${updatedUser.email} subscription is now active: ${data.plan?.name} (${subscriptionTier})`,
       );
     } catch (error) {
       this.logger.error('Error handling subscription active:', error);
@@ -180,11 +176,11 @@ export class ClerkWebhooksService {
     }
   }
 
-  private async handleSubscriptionCreated(
-    data: ClerkSubscription,
-  ): Promise<void> {
+  private async handleSubscriptionCreated(data: any): Promise<void> {
     try {
-      const subscriptionTier = this.mapPlanToSubscriptionTier(data.plan.name);
+      const subscriptionTier = this.mapPlanToSubscriptionTier(
+        data.plan?.name || 'free',
+      );
 
       const updatedUser = await this.usersService.updateByClerkId(
         data.user_id,
@@ -194,7 +190,7 @@ export class ClerkWebhooksService {
       );
 
       this.logger.log(
-        `User ${updatedUser.email} created subscription: ${data.plan.name} (${subscriptionTier})`,
+        `User ${updatedUser.email} created subscription: ${data.plan?.name} (${subscriptionTier})`,
       );
     } catch (error) {
       this.logger.error('Error handling subscription created:', error);
@@ -202,14 +198,12 @@ export class ClerkWebhooksService {
     }
   }
 
-  private async handleSubscriptionPastDue(
-    data: ClerkSubscription,
-  ): Promise<void> {
+  private async handleSubscriptionPastDue(data: any): Promise<void> {
     try {
       // For past due subscriptions, we might want to maintain current tier temporarily
       // but log the issue for manual review
       this.logger.warn(
-        `Subscription past due for user ${data.user_id}, plan: ${data.plan.name}. Status: ${data.status}`,
+        `Subscription past due for user ${data.user_id}, plan: ${data.plan?.name}. Status: ${data.status}`,
       );
 
       // Optionally downgrade to FREE immediately or after grace period
@@ -226,11 +220,11 @@ export class ClerkWebhooksService {
     }
   }
 
-  private async handleSubscriptionUpdated(
-    data: ClerkSubscription,
-  ): Promise<void> {
+  private async handleSubscriptionUpdated(data: any): Promise<void> {
     try {
-      const subscriptionTier = this.mapPlanToSubscriptionTier(data.plan.name);
+      const subscriptionTier = this.mapPlanToSubscriptionTier(
+        data.plan?.name || 'free',
+      );
 
       const updatedUser = await this.usersService.updateByClerkId(
         data.user_id,
@@ -240,35 +234,11 @@ export class ClerkWebhooksService {
       );
 
       this.logger.log(
-        `User ${updatedUser.email} updated subscription: ${data.plan.name} (${subscriptionTier})`,
+        `User ${updatedUser.email} updated subscription: ${data.plan?.name} (${subscriptionTier})`,
       );
     } catch (error) {
       this.logger.error('Error handling subscription updated:', error);
       throw error;
     }
-  }
-
-  private mapPlanToSubscriptionTier(planName: string): SubscriptionTier {
-    // Map Clerk plan names to your subscription tiers
-    // Adjust these mappings based on your actual plan names in Clerk
-    const planMapping: Record<string, SubscriptionTier> = {
-      free: SubscriptionTier.FREE,
-      basic: SubscriptionTier.FREE,
-      pro: SubscriptionTier.PRO,
-      premium: SubscriptionTier.PRO,
-      gold: SubscriptionTier.PRO,
-      silver: SubscriptionTier.PRO,
-      bronze: SubscriptionTier.FREE,
-    };
-
-    const normalizedPlanName = planName.toLowerCase();
-    const tier = planMapping[normalizedPlanName];
-
-    if (!tier) {
-      this.logger.warn(`Unknown plan name: ${planName}, defaulting to FREE`);
-      return SubscriptionTier.FREE;
-    }
-
-    return tier;
   }
 }

@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@clerk/backend": "^1.32.2",
+    "@clerk/fastify": "^2.4.4",
     "@fastify/multipart": "^8.0.0",
     "@nestjs/axios": "^4.0.0",
     "@nestjs/bull": "^10.0.1",
@@ -57,6 +58,7 @@
     "rxjs": "^7.8.1",
     "scrapingbee": "^1.7.5",
     "short-uuid": "^4.2.2",
+    "svix": "^1.68.0",
     "typesense": "^2.0.3"
   },
   "devDependencies": {
